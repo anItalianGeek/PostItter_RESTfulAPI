@@ -1,0 +1,6 @@
+@PostItter_RESTfulAPI_HostAddress = http://localhost:5057
+
+GET {{PostItter_RESTfulAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
