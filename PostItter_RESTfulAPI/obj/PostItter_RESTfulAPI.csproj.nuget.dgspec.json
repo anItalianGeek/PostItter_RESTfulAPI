@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/ognjen/All about Coding/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj": {}
+    "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj": {}
   },
   "projects": {
-    "/home/ognjen/All about Coding/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj": {
+    "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/ognjen/All about Coding/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
+        "projectUniqueName": "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
         "projectName": "PostItter_RESTfulAPI",
-        "projectPath": "/home/ognjen/All about Coding/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
+        "projectPath": "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
         "packagesPath": "/home/ognjen/.nuget/packages/",
-        "outputPath": "/home/ognjen/All about Coding/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/",
+        "outputPath": "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/ognjen/.nuget/NuGet/NuGet.Config"
@@ -42,6 +42,30 @@
               "target": "Package",
               "version": "[8.0.7, )"
             },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Microsoft.EntityFrameworkCore.Relational": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Pomelo.EntityFrameworkCore.MySql": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.4.0, )"
@@ -66,7 +90,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/snap/dotnet-sdk/current/sdk/8.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.303/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
