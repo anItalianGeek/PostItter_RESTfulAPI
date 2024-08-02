@@ -82,7 +82,9 @@ namespace PostItter_RESTfulAPI.Migrations
                 columns: table => new
                 {
                     record_id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user = table.Column<long>(type: "bigint", nullable: false),
+                    post = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -144,6 +146,8 @@ namespace PostItter_RESTfulAPI.Migrations
                     username = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     email = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    password = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     everyoneCanText = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     privateProfile = table.Column<bool>(type: "tinyint(1)", nullable: false),

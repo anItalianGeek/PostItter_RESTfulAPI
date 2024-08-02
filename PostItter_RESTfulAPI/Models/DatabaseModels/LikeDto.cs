@@ -8,6 +8,6 @@ public class LikeDto
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public long record_id { get; set; }
-    private long user { get; set; }
-    private long post { get; set; }
+    public long user { get; set; }
+    public long post { get; set; }
 }

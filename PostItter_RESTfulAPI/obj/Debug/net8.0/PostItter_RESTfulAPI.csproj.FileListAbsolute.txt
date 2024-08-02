@@ -137,3 +137,4 @@
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/Debug/net8.0/PostItter_RESTfulAPI.pdb
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/Debug/net8.0/PostItter_RESTfulAPI.genruntimeconfig.cache
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/Debug/net8.0/ref/PostItter_RESTfulAPI.dll
+/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/obj/Debug/net8.0/PostItter_RESTfulAPI.sourcelink.json
