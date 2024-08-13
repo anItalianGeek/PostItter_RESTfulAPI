@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using PostItter_RESTfulAPI.Models;
@@ -16,19 +17,25 @@ public class NotificationController : ControllerBase
         database = _database;
     }
 
-    [HttpGet("get/{id:string}")]
+    [HttpGet("get/{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult getNotifications(string id)
+    public async Task<ActionResult<Notification[]>> getNotifications(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
         try
         {
-            NotificationDto[] dbNotifs = database.notifications.Where(record => record.user_receiver == numeric_id).ToArray();
+            var dbNotifs = await database.notifications
+                .Where(n => n.user_receiver == numeric_id)
+                .ToArrayAsync();
+
             Notification[] notifs = new Notification[dbNotifs.Length];
             for (int i = 0; i < dbNotifs.Length; i++)
             {
-                UserDto sender = database.users.FirstOrDefault(record => record.user_id == dbNotifs[i].user_sender);
+                UserDto sender = await database.users.FirstOrDefaultAsync(record => record.user_id == dbNotifs[i].user_sender);
                 notifs[i] = new Notification
                 {
                     id = dbNotifs[i].notification_id.ToString(),
@@ -53,11 +60,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    [HttpPost("newTo/{destination:string}")]
+    [HttpPost("newTo/{destination}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult addNewNotification([FromBody] Notification notif, string destination)
+    public async Task<IActionResult> addNewNotification([FromBody] Notification notif, string destination)
     {
+        if (!long.TryParse(destination, out long numeric_id))
+            return BadRequest("Invalid user ID");
+        
         NotificationDto newNotif = new NotificationDto
         {
             content = notif.message,
@@ -69,8 +80,8 @@ public class NotificationController : ControllerBase
 
         try
         {
-            database.notifications.Add(newNotif);
-            database.SaveChanges();
+            await database.notifications.AddAsync(newNotif);
+            await database.SaveChangesAsync();
             return Created();
         }
         catch (Exception)
@@ -79,19 +90,25 @@ public class NotificationController : ControllerBase
         }
     }
     
-    [HttpDelete("delete/{id:string}")]
+    [HttpDelete("delete/{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult deleteSingleNotification(string id)
+    public async Task<IActionResult> deleteSingleNotification(string id)
     {
-        NotificationDto notification = database.notifications.FirstOrDefault(record => record.notification_id == Convert.ToInt64(id));
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        NotificationDto notification = await database.notifications.FirstOrDefaultAsync(record => record.notification_id == numeric_id);
+        
         if (notification == null)
             return NotFound();
+        
         try
         {
             database.notifications.Remove(notification);
-            database.SaveChanges();
+            await database.SaveChangesAsync();
             return NoContent();
         }
         catch (Exception)
@@ -100,17 +117,20 @@ public class NotificationController : ControllerBase
         }
     }
 
-    [HttpDelete("deleteAll/{id:string}")]
+    [HttpDelete("deleteAll/{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult deleteAllNotifications(string id)
+    public async Task<IActionResult> deleteAllNotifications(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+        
         try
         { 
-            NotificationDto[] notifs = database.notifications.Where(record => record.user_receiver == numeric_id).ToArray();
-            database.notifications.RemoveRange(notifs);
-            database.SaveChanges();
+            var notifications = database.notifications.Where(n => n.user_receiver == numeric_id);
+            database.notifications.RemoveRange(notifications);
+            await database.SaveChangesAsync();
             return NoContent();
         }
         catch (Exception)

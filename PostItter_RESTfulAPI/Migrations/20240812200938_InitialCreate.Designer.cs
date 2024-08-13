@@ -11,7 +11,7 @@ using PostItter_RESTfulAPI.DatabaseContext;
 namespace PostItter_RESTfulAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240730101500_InitialCreate")]
+    [Migration("20240812200938_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -93,6 +93,12 @@ namespace PostItter_RESTfulAPI.Migrations
                         .HasColumnType("bigint");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("record_id"));
+
+                    b.Property<long>("post")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("user")
+                        .HasColumnType("bigint");
 
                     b.HasKey("record_id");
 
@@ -205,6 +211,10 @@ namespace PostItter_RESTfulAPI.Migrations
 
                     b.Property<bool>("everyoneCanText")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("password")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("privateProfile")
                         .HasColumnType("tinyint(1)");

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using PostItter_RESTfulAPI.Models;
@@ -7,7 +8,7 @@ namespace PostItter_RESTfulAPI.Controllers;
 
 [ApiController]
 [Route("api/users")]
-public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD THE API IN A WAY WHERE USERS HAVE A UNIQUE ID
+public class UserController : ControllerBase
 {
     private readonly ApplicationDbContext database;
     
@@ -16,29 +17,36 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         database = _database;
     }
 
-    [HttpGet("{id:string}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult getUserById(string id,[FromQuery] string currentUser)
+    public async Task<ActionResult<User>> getUserById(string id,[FromQuery] string currentUser)
     {
-        long id_currentUser = Convert.ToInt64(currentUser);
-        long numeric_id = Convert.ToInt64(id);
-        if (database.blockedUsers.FirstOrDefault(record => record.user == id_currentUser && record.blocked_user == numeric_id) != null)
+        if (!long.TryParse(currentUser, out long id_currentUser))
+            return BadRequest("Invalid user ID");
+
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+        
+        if (await database.blockedUsers.FirstOrDefaultAsync(record => record.user == id_currentUser && record.blocked_user == numeric_id) != null)
             return StatusCode(406, "Request Not Acceptable. Requested User is Blocked.");
         
-        UserDto searchedUser = database.users.FirstOrDefault(record => record.user_id == numeric_id);
+        UserDto searchedUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
+        
         if (searchedUser == null)
             return NotFound();
+        
         User returnedUser = new User();
         returnedUser.id = searchedUser.user_id.ToString();
         returnedUser.bio = searchedUser.bio;
 
-        BlockedUserDTO[] blockedUsers = database.blockedUsers.Where(record => record.user == searchedUser.user_id).ToArray();
+        BlockedUserDTO[] blockedUsers = await database.blockedUsers.Where(record => record.user == searchedUser.user_id).ToArrayAsync();
         returnedUser.blockedUsers = new User[blockedUsers.Length];
         for (int i = 0; i < blockedUsers.Length; i++)
         {
-            UserDto theBlockedGuy = database.users.FirstOrDefault(record => record.user_id == blockedUsers[i].blocked_user);
+            UserDto theBlockedGuy = await database.users.FirstOrDefaultAsync(record => record.user_id == blockedUsers[i].blocked_user);
             returnedUser.blockedUsers[i] = new User
             {
                 id = theBlockedGuy.user_id.ToString(), 
@@ -54,13 +62,13 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         returnedUser.email = searchedUser.email;
         returnedUser.everyoneCanText = searchedUser.everyoneCanText;
 
-        UserConnectionDto[] _following = database.connections.Where(record => record.user == searchedUser.user_id).ToArray();
-        UserConnectionDto[] _followers = database.connections.Where(record => record.following_user == searchedUser.user_id).ToArray();
+        UserConnectionDto[] _following = await database.connections.Where(record => record.user == searchedUser.user_id).ToArrayAsync();
+        UserConnectionDto[] _followers = await database.connections.Where(record => record.following_user == searchedUser.user_id).ToArrayAsync();
         returnedUser.following = new User[_following.Length];
         returnedUser.followers = new User[_followers.Length];
         for (int i = 0; i < _following.Length; i++)
         {
-            UserDto interestedUser = database.users.FirstOrDefault(record => record.user_id == _following[i].following_user);
+            UserDto interestedUser = await database.users.FirstOrDefaultAsync(record => record.user_id == _following[i].following_user);
             returnedUser.following[i] = new User
             {
                 id = interestedUser.user_id.ToString(), 
@@ -71,7 +79,7 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         }
         for (int i = 0; i < _followers.Length; i++)
         {
-            UserDto interestedUser = database.users.FirstOrDefault(record => record.user_id == _followers[i].following_user);
+            UserDto interestedUser = await database.users.FirstOrDefaultAsync(record => record.user_id == _followers[i].following_user);
             returnedUser.followers[i] = new User
             {
                 id = interestedUser.user_id.ToString(), 
@@ -84,7 +92,7 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         List<Post> commentedPosts = new List<Post>();
         List<Post> likedPosts = new List<Post>();
         
-        NotificationDto[] notifications = database.notifications.Where(record => record.user_receiver == searchedUser.user_id).ToArray();
+        NotificationDto[] notifications = await database.notifications.Where(record => record.user_receiver == searchedUser.user_id).ToArrayAsync();
         returnedUser.notifications = new Notification[notifications.Length];
         for (int i = 0; i < notifications.Length; i++)
         {
@@ -92,7 +100,7 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
             returnedUser.notifications[i].type = notifications[i].type;
             returnedUser.notifications[i].message = notifications[i].content;
             returnedUser.notifications[i].postId = notifications[i].post_ref.ToString();
-            UserDto sender = database.users.FirstOrDefault(record => record.user_id == notifications[i].user_sender);
+            UserDto sender = await database.users.FirstOrDefaultAsync(record => record.user_id == notifications[i].user_sender);
             returnedUser.notifications[i].user = new User
             {
                 id = sender.user_id.ToString(),
@@ -102,7 +110,7 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
             };
         }
         
-        PostDto[] dbPosts = database.posts.Where(post => post.user_id == numeric_id).ToArray();
+        PostDto[] dbPosts = await database.posts.Where(post => post.user_id == numeric_id).ToArrayAsync();
         Post[] posts = new Post[dbPosts.Length];
         for (int i = 0; i < dbPosts.Length; i++)
         {
@@ -110,8 +118,8 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
             
             posts[i].body = dbPosts[i].body;
             
-            CommentDto[] comments = database.comments
-                .Where(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id).ToArray();
+            CommentDto[] comments = await database.comments
+                .Where(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id).ToArrayAsync();
             posts[i].comments = new Comment[comments.Length];
             for (int j = 0; j < comments.Length; j++)
             {
@@ -126,7 +134,7 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
                 };
             }
             
-            HashtagDto[] hashes = database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).ToArray();
+            HashtagDto[] hashes = await database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).ToArrayAsync();
             posts[i].hashtags = new String[hashes.Length];
             for (int j = 0; j < hashes.Length; j++)
             {
@@ -145,9 +153,9 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
                 profilePicture = searchedUser.profilePicture
             };
             
-            if (database.likes.FirstOrDefault(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
+            if (await database.likes.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
                 likedPosts.Add(posts[i]);
-            if (database.comments.FirstOrDefault(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
+            if (await database.comments.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
                 commentedPosts.Add(posts[i]);
         }
         returnedUser.posts = posts;
@@ -159,16 +167,19 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         return Ok(returnedUser);
     }
 
-    [HttpGet("{id:string}/followers")]
+    [HttpGet("{id}/followers")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult getFollowersFromUser(string id)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<User[]>> getFollowersFromUser(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
-        UserConnectionDto[] connections = database.connections.Where(record => record.following_user == numeric_id).ToArray();
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        UserConnectionDto[] connections = await database.connections.Where(record => record.following_user == numeric_id).ToArrayAsync();
         User[] followers = new User[connections.Length];
         for (int i = 0; i < connections.Length; i++)
         {
-            UserDto current = database.users.FirstOrDefault(record => record.user_id == connections[i].user);
+            UserDto current = await database.users.FirstOrDefaultAsync(record => record.user_id == connections[i].user);
             followers[i] = new User
             {
                 id = current.user_id.ToString(),
@@ -181,16 +192,19 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         return Ok(followers);
     }
     
-    [HttpGet("{id:string}/following")]
+    [HttpGet("{id}/following")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult getFollowingFromUser(string id)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<User[]>> getFollowingFromUser(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
-        UserConnectionDto[] connections = database.connections.Where(record => record.user == numeric_id).ToArray();
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        UserConnectionDto[] connections = await database.connections.Where(record => record.user == numeric_id).ToArrayAsync();
         User[] following = new User[connections.Length];
         for (int i = 0; i < connections.Length; i++)
         {
-            UserDto current = database.users.FirstOrDefault(record => record.user_id == connections[i].user);
+            UserDto current = await database.users.FirstOrDefaultAsync(record => record.user_id == connections[i].user);
             following[i] = new User
             {
                 id = current.user_id.ToString(),
@@ -203,7 +217,8 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         return Ok(following);
     }
 
-    [HttpPost("{id:string}")]
+    /**     USELESS!! I will keep the method commented here, however, it's LoginController's job to add new users to the database with standard data!
+    [HttpPost("{id}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult addNewUser(string id,[FromBody] User newUser)
@@ -231,16 +246,19 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
             return StatusCode(500, "Internal Server Error");
         }
     }
-
-    [HttpPut("{id:string}")]
+    */
+    
+    [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult updateExistingUser(string id,[FromBody] User newData)
+    public async Task<IActionResult> updateExistingUser(string id,[FromBody] User newData)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
         
-        UserDto userToUpdate = database.users.FirstOrDefault(record => record.user_id == numeric_id);
+        UserDto userToUpdate = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         if (userToUpdate == null)
             return NotFound();
 
@@ -261,10 +279,10 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         if (newData.profilePicture != userToUpdate.profilePicture)
             userToUpdate.profilePicture = newData.profilePicture;
         userToUpdate.user_id = numeric_id;
+        
         try
         {
-            database.users.Update(userToUpdate);
-            database.SaveChanges();
+            await database.SaveChangesAsync();
             return Accepted();
         }
         catch (Exception)
@@ -273,15 +291,17 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         }
     }
 
-    [HttpPost("{id:string}/block")]
+    [HttpPost("{id}/block")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult blockUser(string id, [FromBody] User userToBlock)
+    public async Task<IActionResult> blockUser(string id, [FromBody] User userToBlock)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
         
-        if (database.users.FirstOrDefault(record => record.user_id == Convert.ToInt64(userToBlock.id)) == null)
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == Convert.ToInt64(userToBlock.id)) == null)
             return NotFound();
         
         BlockedUserDTO blockedUserDto = new BlockedUserDTO
@@ -292,13 +312,14 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
 
         try
         {
-            database.blockedUsers.Add(blockedUserDto);
+            var task = database.blockedUsers.AddAsync(blockedUserDto);
             
-            UserConnectionDto connection = database.connections.FirstOrDefault(record => record.following_user == Convert.ToInt64(userToBlock.id) && record.user == numeric_id);
+            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == Convert.ToInt64(userToBlock.id) && record.user == numeric_id);
             if (connection != null)
                 database.connections.Remove(connection);
-            
-            database.SaveChanges();
+
+            await task;
+            await database.SaveChangesAsync();
             return Ok();
         }
         catch (Exception)
@@ -307,24 +328,26 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         }
     }
 
-    [HttpPost("{id:string}/unblock")]
+    [HttpPost("{id}/unblock")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult unblockUser(string id, [FromBody] User userToUnblock)
+    public async Task<IActionResult> unblockUser(string id, [FromBody] User userToUnblock)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
         
-        if (database.users.FirstOrDefault(record => record.user_id == Convert.ToInt64(userToUnblock.id)) == null)
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == Convert.ToInt64(userToUnblock.id)) == null)
             return NotFound();
 
-        BlockedUserDTO unblockedUserDto = database.blockedUsers.FirstOrDefault(record => 
+        BlockedUserDTO unblockedUserDto = await database.blockedUsers.FirstOrDefaultAsync(record => 
             record.user == numeric_id && record.blocked_user == Convert.ToInt64(userToUnblock.id)
         );
         try
         {
             database.blockedUsers.Remove(unblockedUserDto);
-            database.SaveChanges();
+            await database.SaveChangesAsync();
             return NoContent();
         }
         catch (Exception)
@@ -333,19 +356,21 @@ public class UserController : ControllerBase // TODO - IMPORTANT FIX: MUST BUILD
         }
     }
     
-    [HttpDelete("{id:string}")]
+    [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult deleteUser(string id)
+    public async Task<IActionResult> deleteUser(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
         
-        UserDto cancelledUser = database.users.FirstOrDefault(record => record.user_id == numeric_id);
+        UserDto cancelledUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         if (cancelledUser == null)
             return NotFound();
         
         database.users.Remove(cancelledUser);
-        database.SaveChanges();
+        await database.SaveChangesAsync();
         return NoContent();
     }
 }

@@ -91,6 +91,12 @@ namespace PostItter_RESTfulAPI.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("record_id"));
 
+                    b.Property<long>("post")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("user")
+                        .HasColumnType("bigint");
+
                     b.HasKey("record_id");
 
                     b.ToTable("likes");
@@ -202,6 +208,10 @@ namespace PostItter_RESTfulAPI.Migrations
 
                     b.Property<bool>("everyoneCanText")
                         .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("password")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("privateProfile")
                         .HasColumnType("tinyint(1)");

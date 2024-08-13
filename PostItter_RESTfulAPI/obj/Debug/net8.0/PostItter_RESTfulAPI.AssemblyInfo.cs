@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PostItter_RESTfulAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+28b990196928a86cbd870475df67d8904fbc10b2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2475a94b7646d0f0ec8a6f545c2b60049226ed06")]
 [assembly: System.Reflection.AssemblyProductAttribute("PostItter_RESTfulAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PostItter_RESTfulAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

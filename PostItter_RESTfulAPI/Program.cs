@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Configura i servizi
 builder.Services.AddControllers(options =>
 {
     options.ReturnHttpNotAcceptable = true;
@@ -16,15 +16,39 @@ builder.Services.AddDbContext<ApplicationDbContext>(option =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Configura CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
+// Configura Kestrel
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Listen(System.Net.IPAddress.Any, 5265);
+});
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configura il pipeline di richieste HTTP
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1"));
 }
 
+// Usa routing
+app.UseRouting();
+
 app.UseHttpsRedirection();
+app.UseCors();
+
+// Mappa i controller
+app.MapControllers();
 
 app.Run();

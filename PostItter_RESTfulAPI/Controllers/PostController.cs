@@ -12,56 +12,65 @@ public class PostController : ControllerBase
 {
     private readonly ApplicationDbContext database;
 
-    PostController(ApplicationDbContext db)
+    public PostController(ApplicationDbContext db)
     {
         database = db;
     }
 
-    [HttpGet("{id:string}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult getPostById(string id)
+    public async Task<ActionResult<Post>> getPostById(string id)
     {
-        long numeric_id = Convert.ToInt64(id);
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
         try
         {
-            PostDto post = database.posts.FirstOrDefault(element => element.post_id == numeric_id);
+            PostDto post = await database.posts.FirstOrDefaultAsync(element => element.post_id == numeric_id);
 
             if (post == null)
                 return NotFound();
             else
             {
+                Task<UserDto?> retrieveUser = database.users.FirstOrDefaultAsync(element => element.user_id == post.user_id);
                 Post returnedPost = new Post();
                 returnedPost.body = post.body;
                 returnedPost.id = post.post_id.ToString();
                 returnedPost.reposts = post.reposts;
                 returnedPost.likes = post.likes;
                 returnedPost.shares = post.shares;
-                UserDto user = database.users.FirstOrDefault(element => element.user_id == post.user_id);
                 returnedPost.user = new User();
+                UserDto user = await retrieveUser;
                 returnedPost.user.id = user.user_id.ToString();
                 returnedPost.user.username = user.username;
                 returnedPost.user.displayName = user.displayname;
                 returnedPost.user.profilePicture = user.profilePicture;
-                // comments
+                // comments TODO
                 // hashtags
-                return Ok(returnedPost); // TODO must check if everything is returned correctly
+                return Ok(returnedPost);
             }
 
         }
-        catch (Exception e)
+        catch (Exception)
         {
             return BadRequest();
         }
     }
 
-    [HttpGet("/user/{userId:string}")]
-    public IActionResult getAllPostsByUser(string userId)
+    [HttpGet("user/{userId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<Post[]>> getAllPostsByUser(string userId)
     {
-        long numeric_id = Convert.ToInt64(userId);
-        UserDto user = database.users.FirstOrDefault(user => user.user_id == numeric_id);
-        PostDto[] dbPosts = database.posts.Where(post => post.user_id == numeric_id).ToArray();
+        if (!long.TryParse(userId, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        UserDto user = await database.users.FirstOrDefaultAsync(user => user.user_id == numeric_id);
+        PostDto[] dbPosts = await database.posts.Where(post => post.user_id == numeric_id).ToArrayAsync();
         Post[] posts = new Post[dbPosts.Length];
         for (int i = 0; i < dbPosts.Length; i++)
         {
@@ -85,22 +94,25 @@ public class PostController : ControllerBase
         return Ok(posts);
     }
 
-    [HttpGet("/user/{userId:string}/{filter:string}")]
+    [HttpGet("user/{userId}/{filter}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult getAllPostByUserOnFilter(string userId, string filter)
+    public async Task<ActionResult<Post[]>> getAllPostByUserOnFilter(string userId, string filter)
     {
-        long user_id = Convert.ToInt64(userId);
+        if (!long.TryParse(userId, out long user_id))
+            return BadRequest("Invalid user ID");
+
         Post[] posts = null;
         switch (filter)
         {
             case "likes":
-                LikeDto[] likes = database.likes.Where(record => record.user == user_id).ToArray();
+                LikeDto[] likes = await database.likes.Where(record => record.user == user_id).ToArrayAsync();
                 posts = new Post[likes.Length];
                 for (int i = 0; i < likes.Length; i++)
                 {
-                    PostDto currentPost = database.posts.FirstOrDefault(record => record.post_id == likes[i].post);
-                    UserDto user = database.users.FirstOrDefault(record => record.user_id == currentPost.user_id);
+                    PostDto currentPost = await database.posts.FirstOrDefaultAsync(record => record.post_id == likes[i].post);
+                    UserDto user = await database.users.FirstOrDefaultAsync(record => record.user_id == currentPost.user_id);
                     posts[i] = new Post();
                     posts[i].body = currentPost.body;
                     posts[i].id = currentPost.post_id.ToString();
@@ -114,14 +126,14 @@ public class PostController : ControllerBase
                         username = user.username,
                         profilePicture = user.profilePicture
                     };
-                    HashtagDto[] hashtags = database.hashtags.Where(record => record.post_ref == currentPost.post_id).ToArray();
+                    HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == currentPost.post_id).ToArrayAsync();
                     posts[i].hashtags = new string[hashtags.Length];
                     for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
-                    CommentDto[] _comments = database.comments.Where(record => record.post == currentPost.post_id).ToArray();
+                    CommentDto[] _comments = await database.comments.Where(record => record.post == currentPost.post_id).ToArrayAsync();
                     posts[i].comments = new Comment[_comments.Length];
                     for (int j = 0; j < _comments.Length; j++)
                     {
-                        UserDto commentingUser = database.users.FirstOrDefault(record => record.user_id == _comments[j].user);
+                        UserDto commentingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == _comments[j].user);
                         posts[i].comments[j] = new Comment
                         {
                             user = new User
@@ -138,22 +150,23 @@ public class PostController : ControllerBase
                 break;
             
             case "comments":
-                CommentDto[] comments = database.comments.Where(record => record.user == user_id).ToArray();
+                CommentDto[] comments = await database.comments.Where(record => record.user == user_id).ToArrayAsync();
                 PostDto[] dbPosts = new PostDto[comments.Length];
                 for (int i = 0; i < comments.Length; i++)
                 {
-                   dbPosts[i] = database.posts.FirstOrDefault(record => record.post_id == comments[i].post);
+                   dbPosts[i] = await database.posts.FirstOrDefaultAsync(record => record.post_id == comments[i].post);
                 }
 
                 posts = new Post[comments.Length];
                 for (int i = 0; i < dbPosts.Length; i++)
                 {
+                    Task<UserDto> retrieveUser = database.users.FirstOrDefaultAsync(record => record.user_id == dbPosts[i].user_id);
                     posts[i] = new Post();
                     posts[i].body = dbPosts[i].body;
                     posts[i].likes = dbPosts[i].likes;
                     posts[i].reposts = dbPosts[i].reposts;
                     posts[i].shares = dbPosts[i].shares;
-                    UserDto postingPerson = database.users.FirstOrDefault(record => record.user_id == dbPosts[i].user_id);
+                    UserDto postingPerson = await retrieveUser;
                     posts[i].user = new User
                     {
                         id = postingPerson.user_id.ToString(),
@@ -161,14 +174,16 @@ public class PostController : ControllerBase
                         displayName = postingPerson.displayname,
                         username = postingPerson.username
                     };
-                    HashtagDto[] hashtags = database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).ToArray();
+                    Task<HashtagDto[]> retrieveHashtags = database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).ToArrayAsync();
+                    Task<CommentDto[]> retrieveComments = database.comments.Where(record => record.post == dbPosts[i].post_id).ToArrayAsync();
+                    HashtagDto[] hashtags = await retrieveHashtags;
+                    CommentDto[] postComments = await retrieveComments;
                     posts[i].hashtags = new string[hashtags.Length];
                     for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
-                    CommentDto[] postComments = database.comments.Where(record => record.post == dbPosts[i].post_id).ToArray();
                     posts[i].comments = new Comment[postComments.Length];
                     for (int j = 0; j < postComments.Length; j++)
                     {
-                        UserDto commentingUser = database.users.FirstOrDefault(record => record.user_id == postComments[j].user);
+                        UserDto commentingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == postComments[j].user);
                         posts[i].comments[j].user = new User
                         {
                             id = commentingUser.user_id.ToString(),
@@ -182,9 +197,9 @@ public class PostController : ControllerBase
                 break;
             
             case "reposts":
-                PostDto[] repostedPosts = database.posts.Where(record => record.post_ref != 0 && record.user_id == user_id).ToArray();
+                PostDto[] repostedPosts = await database.posts.Where(record => record.post_ref != 0 && record.user_id == user_id).ToArrayAsync();
                 posts = new Post[repostedPosts.Length];
-                UserDto myself = database.users.FirstOrDefault(record => record.user_id == user_id);
+                UserDto myself = await database.users.FirstOrDefaultAsync(record => record.user_id == user_id);
                 for (int i = 0; i < posts.Length; i++)
                 {
                     posts[i] = new Post();
@@ -200,10 +215,12 @@ public class PostController : ControllerBase
                         username = myself.username,
                         profilePicture = myself.profilePicture
                     };
-                    HashtagDto[] hashtags = database.hashtags.Where(record => record.post_ref == repostedPosts[i].post_id).ToArray();
+                    Task<HashtagDto[]> retrieveHashtags = database.hashtags.Where(record => record.post_ref == repostedPosts[i].post_id).ToArrayAsync();
+                    Task<CommentDto[]> retrieveComments = database.comments.Where(record => record.post == repostedPosts[i].post_id).ToArrayAsync();
+                    HashtagDto[] hashtags = await retrieveHashtags;
+                    CommentDto[] _comments = await retrieveComments;
                     posts[i].hashtags = new string[hashtags.Length];
                     for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
-                    CommentDto[] _comments = database.comments.Where(record => record.post == repostedPosts[i].post_id).ToArray();
                     posts[i].comments = new Comment[_comments.Length];
                     for (int j = 0; j < _comments.Length; j++)
                     {
@@ -227,5 +244,141 @@ public class PostController : ControllerBase
         if (posts != null)
             return Ok(posts);
         return NotFound();
+    }
+
+    [HttpPost("new")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> addNewPost([FromBody] Post post)
+    {
+        PostDto postDto = new PostDto
+        {
+            body = post.body,
+            likes = 0,
+            reposts = 0,
+            shares = 0,
+            post_ref = 0, // TODO must implement reposting!!!!
+            user_id = Convert.ToInt64(post.user.id)
+        };
+
+        try
+        {
+            await database.posts.AddAsync(postDto);
+            await database.SaveChangesAsync();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error");
+        }
+        
+        postDto = await database.posts.OrderByDescending(e => e.post_id).FirstOrDefaultAsync(); 
+        for (int i = 0; i < post.hashtags.Length; i++)
+        {
+            try
+            {
+                await database.hashtags.AddAsync(new HashtagDto
+                {
+                    content = post.hashtags[i],
+                    post_ref = postDto.post_id
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
+
+        await database.SaveChangesAsync();
+        return Created(); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
+    }
+
+    [HttpPut("update/{id}/{action}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> updatePost(string id, string action, [FromBody] Comment? comment)
+    {
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        PostDto postDto = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
+        
+        if (postDto == null) return NotFound();
+        
+        switch (action)
+        {
+            case "add-like":
+                postDto.likes++;
+                break;
+            
+            case "remove-like":
+                postDto.likes--;
+                break;
+            
+            case "add-comment":
+                if (comment is null)
+                    return BadRequest();
+                
+                CommentDto newComment = new CommentDto
+                {
+                    content = comment.content,
+                    post = numeric_id,
+                    user = Convert.ToInt64(comment.user.id)
+                };
+                await database.comments.AddAsync(newComment);
+                break;
+            
+            case "remove-comment":
+                if (comment is null)
+                    return BadRequest();
+                
+                CommentDto commentDto = database.comments.FirstOrDefault(record => 
+                    record.content == comment.content && record.post == numeric_id && record.user == Convert.ToInt64(comment.user.id)
+                );
+                
+                if (comment == null) return NotFound();
+                
+                database.comments.Remove(commentDto);
+                break;
+            
+            case "repost":
+                postDto.reposts++;
+                break;
+            
+            case "share":
+                postDto.shares++;
+                break;
+        }
+        
+        await database.SaveChangesAsync();
+        return Ok();
+    }
+    
+    [HttpDelete("delete/{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> deletePost(string id)
+    {
+        if (!long.TryParse(id, out long numeric_id))
+            return BadRequest("Invalid user ID");
+
+        PostDto postToDelete = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
+
+        if (postToDelete == null)
+            return NotFound();
+
+        try
+        {
+            database.posts.Remove(postToDelete);
+            await database.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error");
+        }
     }
 }
