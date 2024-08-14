@@ -18,6 +18,7 @@ public class NotificationController : ControllerBase
     }
 
     [HttpGet("get/{id}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -28,20 +29,22 @@ public class NotificationController : ControllerBase
 
         try
         {
-            var dbNotifs = await database.notifications
-                .Where(n => n.user_receiver == numeric_id)
-                .ToArrayAsync();
+            var dbNotifs = database.notifications
+                .Where(n => n.user_receiver == numeric_id);
 
-            Notification[] notifs = new Notification[dbNotifs.Length];
-            for (int i = 0; i < dbNotifs.Length; i++)
+            if (dbNotifs == null)
+                return Ok(null);
+            
+            Notification[] notifs = new Notification[dbNotifs.Count()];
+            for (int i = 0; i < dbNotifs.Count(); i++)
             {
-                UserDto sender = await database.users.FirstOrDefaultAsync(record => record.user_id == dbNotifs[i].user_sender);
+                UserDto sender = await database.users.FirstOrDefaultAsync(record => record.user_id == dbNotifs.ElementAt(i).user_sender);
                 notifs[i] = new Notification
                 {
-                    id = dbNotifs[i].notification_id.ToString(),
-                    message = dbNotifs[i].content,
-                    postId = dbNotifs[i].post_ref.ToString(),
-                    type = dbNotifs[i].type,
+                    id = dbNotifs.ElementAt(i).notification_id.ToString(),
+                    message = dbNotifs.ElementAt(i).content,
+                    postId = dbNotifs.ElementAt(i).post_ref.ToString(),
+                    type = dbNotifs.ElementAt(i).type,
                     user = new User
                     {
                         id = sender.user_id.ToString(),

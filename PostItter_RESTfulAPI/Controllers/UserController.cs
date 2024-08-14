@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
@@ -18,6 +19,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
@@ -168,13 +170,18 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("{id}/followers")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<User[]>> getFollowersFromUser(string id)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
+            return NotFound("User Does Not Exist.");
+        
         UserConnectionDto[] connections = await database.connections.Where(record => record.following_user == numeric_id).ToArrayAsync();
         User[] followers = new User[connections.Length];
         for (int i = 0; i < connections.Length; i++)
@@ -193,13 +200,18 @@ public class UserController : ControllerBase
     }
     
     [HttpGet("{id}/following")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<User[]>> getFollowingFromUser(string id)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
+            return NotFound("User Does Not Exist.");
+        
         UserConnectionDto[] connections = await database.connections.Where(record => record.user == numeric_id).ToArrayAsync();
         User[] following = new User[connections.Length];
         for (int i = 0; i < connections.Length; i++)
@@ -296,17 +308,17 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> blockUser(string id, [FromBody] User userToBlock)
+    public async Task<IActionResult> blockUser(string id, [FromBody] string userToBlock)
     {
-        if (!long.TryParse(id, out long numeric_id))
-            return BadRequest("Invalid user ID");
+        if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToBlock, out long numeric_id_userToBlock))
+            return BadRequest("Invalid user ID.");
         
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == Convert.ToInt64(userToBlock.id)) == null)
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToBlock) == null)
             return NotFound();
-        
+
         BlockedUserDTO blockedUserDto = new BlockedUserDTO
         {
-            blocked_user = Convert.ToInt64(userToBlock.id),
+            blocked_user = numeric_id_userToBlock,
             user = numeric_id
         };
 
@@ -314,7 +326,7 @@ public class UserController : ControllerBase
         {
             var task = database.blockedUsers.AddAsync(blockedUserDto);
             
-            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == Convert.ToInt64(userToBlock.id) && record.user == numeric_id);
+            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == numeric_id_userToBlock && record.user == numeric_id);
             if (connection != null)
                 database.connections.Remove(connection);
 
@@ -333,16 +345,16 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> unblockUser(string id, [FromBody] User userToUnblock)
+    public async Task<IActionResult> unblockUser(string id, [FromBody] string userToUnblock)
     {
-        if (!long.TryParse(id, out long numeric_id))
-            return BadRequest("Invalid user ID");
+        if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToUnblock, out long numeric_id_userToUnblock))
+            return BadRequest("Invalid user ID.");
         
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == Convert.ToInt64(userToUnblock.id)) == null)
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToUnblock) == null)
             return NotFound();
 
         BlockedUserDTO unblockedUserDto = await database.blockedUsers.FirstOrDefaultAsync(record => 
-            record.user == numeric_id && record.blocked_user == Convert.ToInt64(userToUnblock.id)
+            record.user == numeric_id && record.blocked_user == numeric_id_userToUnblock
         );
         try
         {
@@ -367,7 +379,7 @@ public class UserController : ControllerBase
         
         UserDto cancelledUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         if (cancelledUser == null)
-            return NotFound();
+            return NotFound("User Does Not Exist");
         
         database.users.Remove(cancelledUser);
         await database.SaveChangesAsync();

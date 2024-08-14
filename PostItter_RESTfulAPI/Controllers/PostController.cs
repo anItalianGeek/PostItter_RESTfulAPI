@@ -18,6 +18,7 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -61,15 +62,21 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("user/{userId}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<Post[]>> getAllPostsByUser(string userId)
     {
         if (!long.TryParse(userId, out long numeric_id))
             return BadRequest("Invalid user ID");
-
+        
         UserDto user = await database.users.FirstOrDefaultAsync(user => user.user_id == numeric_id);
+
+        if (user == null)
+            return NotFound("User does not Exist");
+        
         PostDto[] dbPosts = await database.posts.Where(post => post.user_id == numeric_id).ToArrayAsync();
         Post[] posts = new Post[dbPosts.Length];
         for (int i = 0; i < dbPosts.Length; i++)
@@ -95,6 +102,7 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("user/{userId}/{filter}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -103,6 +111,9 @@ public class PostController : ControllerBase
         if (!long.TryParse(userId, out long user_id))
             return BadRequest("Invalid user ID");
 
+        if (await database.users.FirstOrDefaultAsync(record => record.user_id == user_id) == null)
+            return NotFound("User Does Not Exist.");
+        
         Post[] posts = null;
         switch (filter)
         {
@@ -292,19 +303,21 @@ public class PostController : ControllerBase
         return Created(); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
     }
 
-    [HttpPut("update/{id}/{action}")]
+    [HttpPut("update/{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> updatePost(string id, string action, [FromBody] Comment? comment)
+    public async Task<IActionResult> updatePost(string id,[FromQuery] string action, [FromBody] Comment? comment)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
         PostDto postDto = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
         
-        if (postDto == null) return NotFound();
+        if (postDto == null) return NotFound("Post Does Not Exist.");
         
         switch (action)
         {
@@ -318,7 +331,7 @@ public class PostController : ControllerBase
             
             case "add-comment":
                 if (comment is null)
-                    return BadRequest();
+                    return BadRequest("Missing Comment, cannot proceed with operation.");
                 
                 CommentDto newComment = new CommentDto
                 {
@@ -327,20 +340,20 @@ public class PostController : ControllerBase
                     user = Convert.ToInt64(comment.user.id)
                 };
                 await database.comments.AddAsync(newComment);
-                break;
+                return Created();
             
             case "remove-comment":
                 if (comment is null)
-                    return BadRequest();
+                    return BadRequest("Missing Comment, cannot proceed with operation.");
                 
                 CommentDto commentDto = database.comments.FirstOrDefault(record => 
                     record.content == comment.content && record.post == numeric_id && record.user == Convert.ToInt64(comment.user.id)
                 );
                 
-                if (comment == null) return NotFound();
+                if (comment == null) return NotFound("Comment Does Not Exist.");
                 
                 database.comments.Remove(commentDto);
-                break;
+                return NoContent();
             
             case "repost":
                 postDto.reposts++;
@@ -350,8 +363,16 @@ public class PostController : ControllerBase
                 postDto.shares++;
                 break;
         }
-        
-        await database.SaveChangesAsync();
+
+        try
+        {
+            await database.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, "Internal Server Error.");
+        }
+
         return Ok();
     }
     

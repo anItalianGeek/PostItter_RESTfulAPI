@@ -19,6 +19,7 @@ public class LoginController : ControllerBase
     }
 
     [HttpGet("check/{name}")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<bool>> checkAvailability(string name)
@@ -54,7 +55,7 @@ public class LoginController : ControllerBase
         
         UserDto user = await database.users.FirstOrDefaultAsync(record => record.email == input.email && record.password == input.password);
 
-        if (user == null) return NotFound();
+        if (user == null) return NotFound("User Does Not Exist.");
         else return Ok(new JwtWebToken
         {
             sub = user.user_id.ToString(),
@@ -66,7 +67,7 @@ public class LoginController : ControllerBase
     }
 
     [HttpPost("signup")]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<JwtWebToken>> signup([FromBody] LoginUserInput input)
@@ -91,7 +92,8 @@ public class LoginController : ControllerBase
             darkMode = false,
             displayname = input.displayName,
             username = input.username,
-            email = input.email, // TODO Must check if there is a way to see if email exists!!
+            email = input.email, // TODO Must check if there is a way to see if email exists!! (using regex)
+            password = input.password,
             everyoneCanText = true,
             privateProfile = false,
             profilePicture = "",
@@ -101,18 +103,19 @@ public class LoginController : ControllerBase
         {
             await database.users.AddAsync(newDbUser);
             await database.SaveChangesAsync();
-            return Created("User Signed Up Successfully", new JwtWebToken
-            {
-                sub = (await database.users.OrderByDescending(e => e.user_id).FirstOrDefaultAsync()).user_id.ToString(),
-                displayname = newDbUser.displayname,
-                username = newDbUser.username,
-                iat = DateTime.Now,
-                exp = DateTime.Now.AddDays(7)
-            });
         }
         catch (Exception)
         {
             return StatusCode(500, "Internal Server Error");
         }
+        
+        return Ok(new JwtWebToken
+        {
+            sub = (await database.users.OrderByDescending(e => e.user_id).FirstOrDefaultAsync()).user_id.ToString(),
+            displayname = newDbUser.displayname,
+            username = newDbUser.username,
+            iat = DateTime.Now,
+            exp = DateTime.Now.AddDays(7)
+        });
     }
 }
