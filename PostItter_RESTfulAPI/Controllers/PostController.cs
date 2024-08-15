@@ -44,13 +44,31 @@ public class PostController : ControllerBase
                 returnedPost.likes = post.likes;
                 returnedPost.shares = post.shares;
                 returnedPost.user = new User();
+                HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).ToArrayAsync();
+                returnedPost.hashtags = new string[hashtags.Length];
+                for (int j = 0; j < hashtags.Length; j++) returnedPost.hashtags[j] = hashtags[j].content;
+                CommentDto[] _comments = await database.comments.Where(record => record.post == numeric_id).ToArrayAsync();
+                returnedPost.comments = new Comment[_comments.Length];
+                for (int j = 0; j < _comments.Length; j++)
+                {
+                    UserDto commentingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == _comments[j].user);
+                    returnedPost.comments[j] = new Comment
+                    {
+                        user = new User
+                        {
+                            id = commentingUser.user_id.ToString(),
+                            profilePicture = commentingUser.profilePicture,
+                            displayName = commentingUser.displayname,
+                            username = commentingUser.username
+                        },
+                        content = _comments[j].content
+                    };
+                }
                 UserDto user = await retrieveUser;
                 returnedPost.user.id = user.user_id.ToString();
                 returnedPost.user.username = user.username;
                 returnedPost.user.displayName = user.displayname;
                 returnedPost.user.profilePicture = user.profilePicture;
-                // comments TODO
-                // hashtags
                 return Ok(returnedPost);
             }
 
