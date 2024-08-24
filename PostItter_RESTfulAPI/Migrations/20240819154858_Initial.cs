@@ -6,12 +6,28 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace PostItter_RESTfulAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "activeUsers",
+                columns: table => new
+                {
+                    record_id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user_ref = table.Column<long>(type: "bigint", nullable: false),
+                    encodedToken = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_activeUsers", x => x.record_id);
+                })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
@@ -26,6 +42,23 @@ namespace PostItter_RESTfulAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_blockedUsers", x => x.record_id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "chats",
+                columns: table => new
+                {
+                    record_id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    chat_id = table.Column<long>(type: "bigint", nullable: false),
+                    chat_name = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    member_id = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_chats", x => x.record_id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -93,6 +126,25 @@ namespace PostItter_RESTfulAPI.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "messages",
+                columns: table => new
+                {
+                    message_id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    content = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    file_url = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    sender_id = table.Column<long>(type: "bigint", nullable: false),
+                    chat_ref = table.Column<long>(type: "bigint", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_messages", x => x.message_id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "notifications",
                 columns: table => new
                 {
@@ -124,11 +176,36 @@ namespace PostItter_RESTfulAPI.Migrations
                     likes = table.Column<int>(type: "int", nullable: false),
                     reposts = table.Column<int>(type: "int", nullable: false),
                     shares = table.Column<int>(type: "int", nullable: false),
-                    user_id = table.Column<long>(type: "bigint", nullable: false)
+                    user_id = table.Column<long>(type: "bigint", nullable: false),
+                    color = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_posts", x => x.post_id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "settings",
+                columns: table => new
+                {
+                    record_id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user = table.Column<long>(type: "bigint", nullable: false),
+                    darkMode = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    privateProfile = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    everyoneCanText = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    twoFA = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    likeNotification = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    commentNotification = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    replyNotification = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    followNotification = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    messageNotification = table.Column<bool>(type: "tinyint(1)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_settings", x => x.record_id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -140,7 +217,6 @@ namespace PostItter_RESTfulAPI.Migrations
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     bio = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    darkMode = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     displayname = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     username = table.Column<string>(type: "longtext", nullable: false)
@@ -149,8 +225,6 @@ namespace PostItter_RESTfulAPI.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     password = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    everyoneCanText = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    privateProfile = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     profilePicture = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
@@ -165,7 +239,13 @@ namespace PostItter_RESTfulAPI.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "activeUsers");
+
+            migrationBuilder.DropTable(
                 name: "blockedUsers");
+
+            migrationBuilder.DropTable(
+                name: "chats");
 
             migrationBuilder.DropTable(
                 name: "comments");
@@ -180,10 +260,16 @@ namespace PostItter_RESTfulAPI.Migrations
                 name: "likes");
 
             migrationBuilder.DropTable(
+                name: "messages");
+
+            migrationBuilder.DropTable(
                 name: "notifications");
 
             migrationBuilder.DropTable(
                 name: "posts");
+
+            migrationBuilder.DropTable(
+                name: "settings");
 
             migrationBuilder.DropTable(
                 name: "users");

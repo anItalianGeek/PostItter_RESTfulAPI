@@ -7,4 +7,5 @@ public class JwtWebToken
     public string displayname { get; set; }
     public DateTime iat { get; set; }
     public DateTime exp { get; set; }
+    public string server_signature { get; set; }
 }

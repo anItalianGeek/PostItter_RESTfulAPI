@@ -11,8 +11,8 @@ using PostItter_RESTfulAPI.DatabaseContext;
 namespace PostItter_RESTfulAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240812200938_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20240819154858_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +23,26 @@ namespace PostItter_RESTfulAPI.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+
+            modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.ActiveUsersDto", b =>
+                {
+                    b.Property<long>("record_id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("record_id"));
+
+                    b.Property<string>("encodedToken")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<long>("user_ref")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("record_id");
+
+                    b.ToTable("activeUsers");
+                });
 
             modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.BlockedUserDTO", b =>
                 {
@@ -41,6 +61,29 @@ namespace PostItter_RESTfulAPI.Migrations
                     b.HasKey("record_id");
 
                     b.ToTable("blockedUsers");
+                });
+
+            modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.ChatDto", b =>
+                {
+                    b.Property<long>("record_id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("record_id"));
+
+                    b.Property<long>("chat_id")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("chat_name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<long>("member_id")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("record_id");
+
+                    b.ToTable("chats");
                 });
 
             modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.CommentDto", b =>
@@ -105,6 +148,33 @@ namespace PostItter_RESTfulAPI.Migrations
                     b.ToTable("likes");
                 });
 
+            modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.MessageDto", b =>
+                {
+                    b.Property<long>("message_id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("message_id"));
+
+                    b.Property<long>("chat_ref")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("content")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("file_url")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<long>("sender_id")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("message_id");
+
+                    b.ToTable("messages");
+                });
+
             modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.NotificationDto", b =>
                 {
                     b.Property<long>("notification_id")
@@ -144,6 +214,10 @@ namespace PostItter_RESTfulAPI.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("post_id"));
 
                     b.Property<string>("body")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("color")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -198,9 +272,6 @@ namespace PostItter_RESTfulAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("darkMode")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("displayname")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -209,15 +280,9 @@ namespace PostItter_RESTfulAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<bool>("everyoneCanText")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<string>("password")
                         .IsRequired()
                         .HasColumnType("longtext");
-
-                    b.Property<bool>("privateProfile")
-                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("profilePicture")
                         .IsRequired()
@@ -230,6 +295,49 @@ namespace PostItter_RESTfulAPI.Migrations
                     b.HasKey("user_id");
 
                     b.ToTable("users");
+                });
+
+            modelBuilder.Entity("PostItter_RESTfulAPI.Models.DatabaseModels.UserSettingsDto", b =>
+                {
+                    b.Property<long>("record_id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("record_id"));
+
+                    b.Property<bool>("commentNotification")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("darkMode")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("everyoneCanText")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("followNotification")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("likeNotification")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("messageNotification")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("privateProfile")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("replyNotification")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("twoFA")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<long>("user")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("record_id");
+
+                    b.ToTable("settings");
                 });
 #pragma warning restore 612, 618
         }

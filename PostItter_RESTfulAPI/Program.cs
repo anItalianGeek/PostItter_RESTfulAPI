@@ -15,6 +15,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(option =>
     ));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// TODO add aws connections
 
 // Configura CORS
 builder.Services.AddCors(options =>

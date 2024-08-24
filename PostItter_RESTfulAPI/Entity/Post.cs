@@ -10,4 +10,5 @@ public class Post
     public int reposts { get; set; }
     public int shares { get; set; }
     public User user { get; set; }
+    public string color { get; set; }
 }

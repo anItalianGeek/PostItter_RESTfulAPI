@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
@@ -17,32 +19,105 @@ public class PostController : ControllerBase
         database = db;
     }
 
+    [HttpGet]
+    [Produces("application/json")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<Post[]>> getPosts([FromQuery] string id_retrieving_user)
+    {
+        if (!long.TryParse(id_retrieving_user, out long id))
+            return BadRequest("Invalid user ID.");
+        
+        try
+        {
+            List<Post> list = new List<Post>();
+            List<PostDto> postDtos = await database.posts.ToListAsync();
+            List<BlockedUserDTO> blockedUsers = await database.blockedUsers.Where(record => record.user == id).ToListAsync();
+            foreach (PostDto element in postDtos)
+            {
+                bool skipPost = false;
+                foreach (BlockedUserDTO blockedUser in blockedUsers)
+                    if (blockedUser.blocked_user == element.user_id)
+                    {
+                        skipPost = true;
+                        break;
+                    }
+
+                if (skipPost)
+                    continue;
+                
+                UserDto user = await database.users.FirstOrDefaultAsync(record => record.user_id == element.user_id);
+                if (user == null)
+                    return NotFound("A post was requested but the user doesn't exist.");
+                HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == element.post_id).ToArrayAsync();
+                string[] hashes = new string[hashtags.Length];
+                for (int j = 0; j < hashtags.Length; j++) hashes[j] = hashtags[j].content;
+                list.Add(new Post
+                {
+                    id = element.post_id.ToString(),
+                    body = element.body,
+                    likes = element.likes,
+                    reposts = element.reposts,
+                    shares = element.shares,
+                    user = new User
+                    {
+                        username = user.username,
+                        displayName = user.displayname,
+                        id = user.user_id.ToString(),
+                        profilePicture = user.profilePicture
+                    },
+                    hashtags = hashes,
+                    comments = [],
+                    color = element.color
+                });
+            }
+
+            return Ok(list);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error");
+        }
+    }
+    
     [HttpGet("{id}")]
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Post>> getPostById(string id)
+    public async Task<ActionResult<Post>> getPostById(string id, [FromQuery] string id_retrieving_user)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
-
+        if (!long.TryParse(id_retrieving_user, out long idRetrievingUser))
+            return BadRequest("Invalid user ID.");
+        
         try
         {
             PostDto post = await database.posts.FirstOrDefaultAsync(element => element.post_id == numeric_id);
-
+            
             if (post == null)
-                return NotFound();
+                return NotFound("Requested post doesn't exist.");
             else
             {
-                Task<UserDto?> retrieveUser = database.users.FirstOrDefaultAsync(element => element.user_id == post.user_id);
+                BlockedUserDTO isUserBlocked = await database.blockedUsers.FirstOrDefaultAsync(record => record.user == idRetrievingUser && record.blocked_user == post.user_id);
+                if (isUserBlocked != null)
+                    return StatusCode(406, "Cannot retrieve a post from a Blocked User.");
+                
+                UserDto retrievedUser = await database.users.FirstOrDefaultAsync(element => element.user_id == post.user_id);
+                if (retrievedUser == null)
+                    return BadRequest("A post was requested but the user doesn't exist.");
+                
                 Post returnedPost = new Post();
                 returnedPost.body = post.body;
                 returnedPost.id = post.post_id.ToString();
                 returnedPost.reposts = post.reposts;
                 returnedPost.likes = post.likes;
                 returnedPost.shares = post.shares;
+                returnedPost.color = post.color;
                 returnedPost.user = new User();
                 HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).ToArrayAsync();
                 returnedPost.hashtags = new string[hashtags.Length];
@@ -64,18 +139,18 @@ public class PostController : ControllerBase
                         content = _comments[j].content
                     };
                 }
-                UserDto user = await retrieveUser;
-                returnedPost.user.id = user.user_id.ToString();
-                returnedPost.user.username = user.username;
-                returnedPost.user.displayName = user.displayname;
-                returnedPost.user.profilePicture = user.profilePicture;
+                returnedPost.user.id = retrievedUser.user_id.ToString();
+                returnedPost.user.username = retrievedUser.username;
+                returnedPost.user.displayName = retrievedUser.displayname;
+                returnedPost.user.profilePicture = retrievedUser.profilePicture;
+                
                 return Ok(returnedPost);
             }
 
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            return BadRequest();
+            return BadRequest("Impossible to return the requested post." + e.Message);
         }
     }
 
@@ -85,15 +160,21 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Post[]>> getAllPostsByUser(string userId)
+    public async Task<ActionResult<Post[]>> getAllPostsByUser(string userId, [FromQuery] string id_retrieving_user)
     {
         if (!long.TryParse(userId, out long numeric_id))
             return BadRequest("Invalid user ID");
+        if (!long.TryParse(id_retrieving_user, out long idRetrievingUser))
+            return BadRequest("Invalid user ID.");
         
         UserDto user = await database.users.FirstOrDefaultAsync(user => user.user_id == numeric_id);
 
         if (user == null)
             return NotFound("User does not Exist");
+        
+        BlockedUserDTO isUserBlocked = await database.blockedUsers.FirstOrDefaultAsync(record => record.user == idRetrievingUser && record.blocked_user == numeric_id);
+        if (isUserBlocked != null)
+            return StatusCode(406, "Cannot retrieve posts from a blocked user.");
         
         PostDto[] dbPosts = await database.posts.Where(post => post.user_id == numeric_id).ToArrayAsync();
         Post[] posts = new Post[dbPosts.Length];
@@ -106,10 +187,17 @@ public class PostController : ControllerBase
              posts[i].likes = dbPosts[i].likes;
              posts[i].reposts = dbPosts[i].reposts;
              posts[i].shares = dbPosts[i].shares;
+             posts[i].color = dbPosts[i].color;
+             
+             HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).ToArrayAsync();
+             posts[i].hashtags = new string[hashtags.Length];
+             for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
+             
+             // comments aren't needed since you have to view the post in detail to see the comments
              
              posts[i].user = new User
              {
-                 id = user.user_id.ToString(), // dbPosts[i].user_id.ToString(); ??
+                 id = user.user_id.ToString(),
                  displayName = user.displayname,
                  username = user.username,
                  profilePicture = user.profilePicture
@@ -124,13 +212,21 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Post[]>> getAllPostByUserOnFilter(string userId, string filter)
+    public async Task<ActionResult<Post[]>> getAllPostByUserOnFilter(string userId, string filter, [FromQuery] string id_retrieving_user)
     {
         if (!long.TryParse(userId, out long user_id))
             return BadRequest("Invalid user ID");
 
         if (await database.users.FirstOrDefaultAsync(record => record.user_id == user_id) == null)
             return NotFound("User Does Not Exist.");
+        
+        if (!long.TryParse(id_retrieving_user, out long idRetrievingUser))
+            return BadRequest("Invalid user ID.");
+        
+        List<BlockedUserDTO> blockedUsers = await database.blockedUsers.Where(record => record.user == idRetrievingUser).ToListAsync();
+        foreach (BlockedUserDTO blockedUser in blockedUsers)
+            if (blockedUser.blocked_user == user_id)
+                return StatusCode(406, "Cannot retrieve posts from a blocked user.");
         
         Post[] posts = null;
         switch (filter)
@@ -148,6 +244,7 @@ public class PostController : ControllerBase
                     posts[i].likes = currentPost.likes;
                     posts[i].reposts = currentPost.reposts;
                     posts[i].shares = currentPost.shares;
+                    posts[i].color = currentPost.color;
                     posts[i].user = new User
                     {
                         id = user.user_id.ToString(),
@@ -195,6 +292,7 @@ public class PostController : ControllerBase
                     posts[i].likes = dbPosts[i].likes;
                     posts[i].reposts = dbPosts[i].reposts;
                     posts[i].shares = dbPosts[i].shares;
+                    posts[i].color = dbPosts[i].color;
                     UserDto postingPerson = await retrieveUser;
                     posts[i].user = new User
                     {
@@ -237,6 +335,7 @@ public class PostController : ControllerBase
                     posts[i].likes = repostedPosts[i].likes;
                     posts[i].reposts = repostedPosts[i].reposts;
                     posts[i].shares = repostedPosts[i].shares;
+                    posts[i].color = repostedPosts[i].color;
                     posts[i].user = new User
                     {
                         id = myself.user_id.ToString(),
@@ -277,9 +376,38 @@ public class PostController : ControllerBase
 
     [HttpPost("new")]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> addNewPost([FromBody] Post post)
     {
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         PostDto postDto = new PostDto
         {
             body = post.body,
@@ -287,7 +415,8 @@ public class PostController : ControllerBase
             reposts = 0,
             shares = 0,
             post_ref = 0, // TODO must implement reposting!!!!
-            user_id = Convert.ToInt64(post.user.id)
+            user_id = Convert.ToInt64(post.user.id),
+            color = post.color
         };
 
         try
@@ -317,8 +446,16 @@ public class PostController : ControllerBase
             }
         }
 
-        await database.SaveChangesAsync();
-        return Created(); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
+        try
+        {
+            await database.SaveChangesAsync();
+            return
+                Created(); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error.");
+        }
     }
 
     [HttpPut("update/{id}")]
@@ -327,12 +464,41 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> updatePost(string id,[FromQuery] string action, [FromBody] Comment? comment)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         PostDto postDto = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
         
         if (postDto == null) return NotFound("Post Does Not Exist.");
@@ -398,12 +564,41 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> deletePost(string id)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         PostDto postToDelete = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
 
         if (postToDelete == null)

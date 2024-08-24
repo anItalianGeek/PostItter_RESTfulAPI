@@ -1,11 +1,17 @@
 {
   "version": 2,
-  "dgSpecHash": "m4rs8+sJSUHq4DJ3WWLmyXzj8PbYZDZoaoNynSx/1ebuz0i4idSgFibsHG9XUpzyIhvpjQN/H0FW8s0HeOK69g==",
+  "dgSpecHash": "theB5s26xkM=",
   "success": true,
   "projectFilePath": "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
   "expectedPackageFiles": [
+    "/home/ognjen/.nuget/packages/amazon.core/0.33.0/amazon.core.0.33.0.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/amazon.s3/0.33.0/amazon.s3.0.33.0.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/awssdk.core/4.0.0-preview/awssdk.core.4.0.0-preview.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/awssdk.extensions.netcore.setup/4.0.0-preview/awssdk.extensions.netcore.setup.4.0.0-preview.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/awssdk.s3/4.0.0-preview/awssdk.s3.4.0.0-preview.nupkg.sha512",
     "/home/ognjen/.nuget/packages/azure.core/1.35.0/azure.core.1.35.0.nupkg.sha512",
     "/home/ognjen/.nuget/packages/azure.identity/1.10.3/azure.identity.1.10.3.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/carbon.storage/3.15.0/carbon.storage.3.15.0.nupkg.sha512",
     "/home/ognjen/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/home/ognjen/.nuget/packages/microsoft.aspnetcore.openapi/8.0.7/microsoft.aspnetcore.openapi.8.0.7.nupkg.sha512",
     "/home/ognjen/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",

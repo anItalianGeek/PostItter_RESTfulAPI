@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using PostItter_RESTfulAPI.Models;
@@ -34,11 +36,16 @@ public class UserController : ControllerBase
         
         if (await database.blockedUsers.FirstOrDefaultAsync(record => record.user == id_currentUser && record.blocked_user == numeric_id) != null)
             return StatusCode(406, "Request Not Acceptable. Requested User is Blocked.");
+
+        BlockedUserDTO isUserBlocked = await database.blockedUsers.FirstOrDefaultAsync(record => record.user == id_currentUser && record.blocked_user == numeric_id);
+        if (isUserBlocked != null)
+            return StatusCode(406, "Cannot view a Blocked User.");
         
         UserDto searchedUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
+        UserSettingsDto userSettings = await database.settings.FirstOrDefaultAsync(record => record.user == searchedUser.user_id);
         
-        if (searchedUser == null)
-            return NotFound();
+        if (searchedUser == null || userSettings == null)
+            return NotFound("Requested user does not exist.");
         
         User returnedUser = new User();
         returnedUser.id = searchedUser.user_id.ToString();
@@ -58,11 +65,18 @@ public class UserController : ControllerBase
             };
         }
         
-        returnedUser.darkMode = searchedUser.darkMode;
         returnedUser.displayName = searchedUser.displayname;
         returnedUser.username = searchedUser.username;
         returnedUser.email = searchedUser.email;
-        returnedUser.everyoneCanText = searchedUser.everyoneCanText;
+        returnedUser.darkMode = userSettings.darkMode;
+        returnedUser.everyoneCanText = userSettings.everyoneCanText;
+        returnedUser.privateProfile = userSettings.privateProfile;
+        returnedUser.twoFA = userSettings.twoFA;
+        returnedUser.likeNotification = userSettings.likeNotification;
+        returnedUser.commentNotification = userSettings.commentNotification;
+        returnedUser.replyNotification = userSettings.replyNotification;
+        returnedUser.followNotification = userSettings.followNotification;
+        returnedUser.messageNotification = userSettings.messageNotification;
 
         UserConnectionDto[] _following = await database.connections.Where(record => record.user == searchedUser.user_id).ToArrayAsync();
         UserConnectionDto[] _followers = await database.connections.Where(record => record.following_user == searchedUser.user_id).ToArrayAsync();
@@ -149,7 +163,7 @@ public class UserController : ControllerBase
             
             posts[i].user = new User
             {
-                id = searchedUser.user_id.ToString(), // dbPosts[i].user_id.ToString(); ??
+                id = searchedUser.user_id.ToString(),
                 displayName = searchedUser.displayname,
                 username = searchedUser.username,
                 profilePicture = searchedUser.profilePicture
@@ -163,8 +177,6 @@ public class UserController : ControllerBase
         returnedUser.posts = posts;
         returnedUser.likedPosts = likedPosts.ToArray();
         returnedUser.commentedPosts = commentedPosts.ToArray();
-        
-        returnedUser.privateProfile = searchedUser.privateProfile;
         returnedUser.profilePicture = searchedUser.profilePicture;
         return Ok(returnedUser);
     }
@@ -229,6 +241,56 @@ public class UserController : ControllerBase
         return Ok(following);
     }
 
+    [HttpPost("changePassword")]
+    [Produces("application/json")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> updatePassword([FromBody] string newPassword)
+    {
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+
+            try
+            {
+                (await database.users.FirstOrDefaultAsync(record => record.user_id == currentUser))
+                    .password = newPassword;
+                await database.SaveChangesAsync();
+                return Ok("Password updated.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Internal Server Error.");
+            }
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+    }
+    
     /**     USELESS!! I will keep the method commented here, however, it's LoginController's job to add new users to the database with standard data!
     [HttpPost("{id}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -264,33 +326,77 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> updateExistingUser(string id,[FromBody] User newData)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         UserDto userToUpdate = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
-        if (userToUpdate == null)
-            return NotFound();
+        UserSettingsDto userSettings = await database.settings.FirstOrDefaultAsync(record => record.user == userToUpdate.user_id);
+        
+        if (userToUpdate == null || userSettings == null)
+            return NotFound("Requested User Does Not Exist.");
 
         if (newData.bio != userToUpdate.bio)
             userToUpdate.bio = newData.bio;
-        if (newData.darkMode != userToUpdate.darkMode)
-            userToUpdate.darkMode = (bool) newData.darkMode;
         if (newData.displayName != userToUpdate.displayname)
             userToUpdate.displayname = newData.displayName;
         if (newData.username != userToUpdate.username)
             userToUpdate.username = newData.username;
         if (newData.email != userToUpdate.email)
             userToUpdate.email = newData.email;
-        if (newData.everyoneCanText != userToUpdate.everyoneCanText)
-            userToUpdate.everyoneCanText = (bool) newData.everyoneCanText;
-        if (newData.privateProfile != userToUpdate.privateProfile)
-            userToUpdate.privateProfile = (bool) newData.privateProfile;
         if (newData.profilePicture != userToUpdate.profilePicture)
             userToUpdate.profilePicture = newData.profilePicture;
         userToUpdate.user_id = numeric_id;
+        
+        if (newData.everyoneCanText != userSettings.everyoneCanText)
+            userSettings.everyoneCanText = (bool) newData.everyoneCanText;
+        if (newData.privateProfile != userSettings.privateProfile)
+            userSettings.privateProfile = (bool) newData.privateProfile;
+        if (newData.darkMode != userSettings.darkMode)
+            userSettings.darkMode = (bool) newData.darkMode;
+        if (newData.twoFA != userSettings.twoFA)
+            userSettings.twoFA = (bool) newData.twoFA;
+        if (newData.likeNotification != userSettings.likeNotification)
+            userSettings.likeNotification = (bool)newData.likeNotification;
+        if (newData.commentNotification != userSettings.commentNotification)
+            userSettings.commentNotification = (bool)newData.commentNotification;
+        if (newData.replyNotification != userSettings.replyNotification)
+            userSettings.replyNotification = (bool)newData.replyNotification;
+        if (newData.followNotification != userSettings.followNotification)
+            userSettings.followNotification = (bool)newData.followNotification;
+        if (newData.messageNotification != userSettings.messageNotification)
+            userSettings.messageNotification = (bool)newData.messageNotification;
         
         try
         {
@@ -307,48 +413,215 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> blockUser(string id, [FromBody] string userToBlock)
     {
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToBlock, out long numeric_id_userToBlock))
             return BadRequest("Invalid user ID.");
         
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToBlock) == null)
-            return NotFound();
-
-        BlockedUserDTO blockedUserDto = new BlockedUserDTO
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
         {
-            blocked_user = numeric_id_userToBlock,
-            user = numeric_id
-        };
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
 
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+            
+            if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToBlock) == null)
+                return NotFound();
+
+            BlockedUserDTO blockedUserDto = new BlockedUserDTO
+            {
+                blocked_user = numeric_id_userToBlock,
+                user = numeric_id
+            };
+
+            try
+            {
+                await database.blockedUsers.AddAsync(blockedUserDto);
+            
+                UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == numeric_id_userToBlock && record.user == numeric_id);
+                if (connection != null)
+                    database.connections.Remove(connection);
+
+                await database.SaveChangesAsync();
+                return Ok();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+    }
+
+    [HttpPost("{id}/follow/{followerId}")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> followUser(string id, string followerId)
+    {
+        if (!long.TryParse(id, out long numeric_id) || !long.TryParse(followerId, out long follower_numeric_id))
+            return BadRequest("Invalid user ID.");
+
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         try
         {
-            var task = database.blockedUsers.AddAsync(blockedUserDto);
-            
-            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == numeric_id_userToBlock && record.user == numeric_id);
-            if (connection != null)
-                database.connections.Remove(connection);
-
-            await task;
+            await database.connections.AddAsync(new UserConnectionDto
+            {
+                user = numeric_id,
+                following_user = follower_numeric_id,
+            });
             await database.SaveChangesAsync();
-            return Ok();
+            return Created();
         }
         catch (Exception)
         {
             return StatusCode(500, "Internal Server Error");
         }
     }
+    
+    [HttpDelete("{id}/unfollow/{followerId}")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> unfollowUser(string id, string followerId)
+    {
+        if (!long.TryParse(id, out long numeric_id) || !long.TryParse(followerId, out long follower_numeric_id))
+            return BadRequest("Invalid user ID.");
 
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
+        try
+        {
+            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.user == numeric_id && record.following_user == follower_numeric_id);
+            if (connection != null)
+                database.connections.Remove(connection);
+            else
+                return NotFound("Connection between users not found.");
+            
+            await database.SaveChangesAsync();
+            return Created();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error");
+        }
+    }
+    
     [HttpPost("{id}/unblock")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> unblockUser(string id, [FromBody] string userToUnblock)
     {
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToUnblock, out long numeric_id_userToUnblock))
             return BadRequest("Invalid user ID.");
+        
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
         
         if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToUnblock) == null)
             return NotFound();
@@ -371,11 +644,40 @@ public class UserController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> deleteUser(string id)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
+        
+        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
         
         UserDto cancelledUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         if (cancelledUser == null)

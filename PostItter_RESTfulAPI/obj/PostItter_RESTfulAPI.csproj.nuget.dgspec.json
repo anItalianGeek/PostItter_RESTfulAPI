@@ -32,12 +32,29 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "AWSSDK.Extensions.NETCore.Setup": {
+              "target": "Package",
+              "version": "[4.0.0-preview, )"
+            },
+            "AWSSDK.S3": {
+              "target": "Package",
+              "version": "[4.0.0-preview, )"
+            },
+            "Amazon.S3": {
+              "target": "Package",
+              "version": "[0.33.0, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[8.0.7, )"

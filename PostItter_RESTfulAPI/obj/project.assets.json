@@ -2,6 +2,79 @@
   "version": 3,
   "targets": {
     "net8.0": {
+      "Amazon.Core/0.33.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/Amazon.Core.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Amazon.Core.dll": {}
+        }
+      },
+      "Amazon.S3/0.33.0": {
+        "type": "package",
+        "dependencies": {
+          "Amazon.Core": "0.33.0",
+          "Carbon.Storage": "3.15.0"
+        },
+        "compile": {
+          "lib/net8.0/Amazon.S3.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Amazon.S3.dll": {}
+        }
+      },
+      "AWSSDK.Core/4.0.0-preview": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
+      "AWSSDK.Extensions.NETCore.Setup/4.0.0-preview": {
+        "type": "package",
+        "dependencies": {
+          "AWSSDK.Core": "4.0.0-preview",
+          "Microsoft.Extensions.Configuration.Abstractions": "2.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "2.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "2.0.0"
+        },
+        "compile": {
+          "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.dll": {
+            "related": ".pdb"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/AWSSDK.Extensions.NETCore.Setup.targets": {}
+        }
+      },
+      "AWSSDK.S3/4.0.0-preview": {
+        "type": "package",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.0-preview, 5.0.0-preview)"
+        },
+        "compile": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "Azure.Core/1.35.0": {
         "type": "package",
         "dependencies": {
@@ -44,6 +117,15 @@
           "lib/netstandard2.0/Azure.Identity.dll": {
             "related": ".xml"
           }
+        }
+      },
+      "Carbon.Storage/3.15.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/Carbon.Storage.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Carbon.Storage.dll": {}
         }
       },
       "Humanizer.Core/2.14.1": {
@@ -1644,6 +1726,107 @@
     }
   },
   "libraries": {
+    "Amazon.Core/0.33.0": {
+      "sha512": "pAUAgMdNFFDAgSkxxV4v7dGJkBn/NTk1gDSSaXnQBdoRqMp95zs9EHsUwbD/la3ybbRzaxM5Pbr12Qsn3pG+dw==",
+      "type": "package",
+      "path": "amazon.core/0.33.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "amazon.core.0.33.0.nupkg.sha512",
+        "amazon.core.nuspec",
+        "lib/net8.0/Amazon.Core.dll"
+      ]
+    },
+    "Amazon.S3/0.33.0": {
+      "sha512": "cIF3i4/rujm7YwJ4gCi38CL73UCakmW936s6aetksGTZWzoVdsPcqI/uaX2L5DDq+yHgtpJsvIGYsqrVGrlwSQ==",
+      "type": "package",
+      "path": "amazon.s3/0.33.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "amazon.s3.0.33.0.nupkg.sha512",
+        "amazon.s3.nuspec",
+        "lib/net8.0/Amazon.S3.dll"
+      ]
+    },
+    "AWSSDK.Core/4.0.0-preview": {
+      "sha512": "fSf6Mk4m6rg/AfPpBDUMV+ZTUyC3GYwGeQ5rf9px4uNT0WKo0GdCLNhAl5NLwJCyYMocUYtzPjtnBuBgZRl4FA==",
+      "type": "package",
+      "path": "awssdk.core/4.0.0-preview",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "awssdk.core.4.0.0-preview.nupkg.sha512",
+        "awssdk.core.nuspec",
+        "images/AWSLogo.png",
+        "lib/net472/AWSSDK.Core.dll",
+        "lib/net472/AWSSDK.Core.pdb",
+        "lib/net472/AWSSDK.Core.xml",
+        "lib/net8.0/AWSSDK.Core.dll",
+        "lib/net8.0/AWSSDK.Core.pdb",
+        "lib/net8.0/AWSSDK.Core.xml",
+        "lib/netcoreapp3.1/AWSSDK.Core.dll",
+        "lib/netcoreapp3.1/AWSSDK.Core.pdb",
+        "lib/netcoreapp3.1/AWSSDK.Core.xml",
+        "lib/netstandard2.0/AWSSDK.Core.dll",
+        "lib/netstandard2.0/AWSSDK.Core.pdb",
+        "lib/netstandard2.0/AWSSDK.Core.xml",
+        "tools/account-management.ps1"
+      ]
+    },
+    "AWSSDK.Extensions.NETCore.Setup/4.0.0-preview": {
+      "sha512": "G3EjkRWccolELRXiszr+Pv2U+2fiTDb3f4SRfFn8yV51qGvpjabxjrV5UzOONngIbIVmS5qGcvxjKOOp4Hx8aQ==",
+      "type": "package",
+      "path": "awssdk.extensions.netcore.setup/4.0.0-preview",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "ConfigurationSchema.json",
+        "awssdk.extensions.netcore.setup.4.0.0-preview.nupkg.sha512",
+        "awssdk.extensions.netcore.setup.nuspec",
+        "buildTransitive/net8.0/AWSSDK.Extensions.NETCore.Setup.targets",
+        "buildTransitive/netcoreapp3.1/AWSSDK.Extensions.NETCore.Setup.targets",
+        "buildTransitive/netstandard2.0/AWSSDK.Extensions.NETCore.Setup.targets",
+        "images/AWSLogo.png",
+        "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.dll",
+        "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.pdb",
+        "lib/netcoreapp3.1/AWSSDK.Extensions.NETCore.Setup.dll",
+        "lib/netcoreapp3.1/AWSSDK.Extensions.NETCore.Setup.pdb",
+        "lib/netstandard2.0/AWSSDK.Extensions.NETCore.Setup.dll",
+        "lib/netstandard2.0/AWSSDK.Extensions.NETCore.Setup.pdb"
+      ]
+    },
+    "AWSSDK.S3/4.0.0-preview": {
+      "sha512": "cWxxZx4dhwVeUtvWGOKh/QsrkMNHlwoieMIspIEKIlo7xdgW5blY77+icGOIVCEbV+Tyfo4jQpjxxLoK5qNWYA==",
+      "type": "package",
+      "path": "awssdk.s3/4.0.0-preview",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "analyzers/dotnet/cs/AWSSDK.S3.CodeAnalysis.dll",
+        "analyzers/dotnet/cs/SharedAnalysisCode.dll",
+        "awssdk.s3.4.0.0-preview.nupkg.sha512",
+        "awssdk.s3.nuspec",
+        "images/AWSLogo.png",
+        "lib/net472/AWSSDK.S3.dll",
+        "lib/net472/AWSSDK.S3.pdb",
+        "lib/net472/AWSSDK.S3.xml",
+        "lib/net8.0/AWSSDK.S3.dll",
+        "lib/net8.0/AWSSDK.S3.pdb",
+        "lib/net8.0/AWSSDK.S3.xml",
+        "lib/netcoreapp3.1/AWSSDK.S3.dll",
+        "lib/netcoreapp3.1/AWSSDK.S3.pdb",
+        "lib/netcoreapp3.1/AWSSDK.S3.xml",
+        "lib/netstandard2.0/AWSSDK.S3.dll",
+        "lib/netstandard2.0/AWSSDK.S3.pdb",
+        "lib/netstandard2.0/AWSSDK.S3.xml",
+        "tools/install.ps1",
+        "tools/uninstall.ps1"
+      ]
+    },
     "Azure.Core/1.35.0": {
       "sha512": "hENcx03Jyuqv05F4RBEPbxz29UrM3Nbhnr6Wl6NQpoU9BCIbL3XLentrxDCTrH54NLS11Exxi/o8MYgT/cnKFA==",
       "type": "package",
@@ -1684,6 +1867,18 @@
         "azureicon.png",
         "lib/netstandard2.0/Azure.Identity.dll",
         "lib/netstandard2.0/Azure.Identity.xml"
+      ]
+    },
+    "Carbon.Storage/3.15.0": {
+      "sha512": "k6aoP3AhSselN5eSROUq3lFCv+XvwobMUUwTtzjl32F6Xs8R5nyZMWKjZ1Y5gVLhDbyfmY3W6F1DvL4MNvPX7w==",
+      "type": "package",
+      "path": "carbon.storage/3.15.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "carbon.storage.3.15.0.nupkg.sha512",
+        "carbon.storage.nuspec",
+        "lib/net8.0/Carbon.Storage.dll"
       ]
     },
     "Humanizer.Core/2.14.1": {
@@ -4602,6 +4797,9 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
+      "AWSSDK.Extensions.NETCore.Setup >= 4.0.0-preview",
+      "AWSSDK.S3 >= 4.0.0-preview",
+      "Amazon.S3 >= 0.33.0",
       "Microsoft.AspNetCore.OpenApi >= 8.0.7",
       "Microsoft.EntityFrameworkCore >= 8.0.2",
       "Microsoft.EntityFrameworkCore.Design >= 8.0.2",
@@ -4643,12 +4841,29 @@
         "warnAsError": [
           "NU1605"
         ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
       }
     },
     "frameworks": {
       "net8.0": {
         "targetAlias": "net8.0",
         "dependencies": {
+          "AWSSDK.Extensions.NETCore.Setup": {
+            "target": "Package",
+            "version": "[4.0.0-preview, )"
+          },
+          "AWSSDK.S3": {
+            "target": "Package",
+            "version": "[4.0.0-preview, )"
+          },
+          "Amazon.S3": {
+            "target": "Package",
+            "version": "[0.33.0, )"
+          },
           "Microsoft.AspNetCore.OpenApi": {
             "target": "Package",
             "version": "[8.0.7, )"

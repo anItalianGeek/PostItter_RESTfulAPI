@@ -18,4 +18,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<HashtagDto> hashtags { get; set; }
     public DbSet<LikeDto> likes { get; set; }
     public DbSet<UserConnectionDto> connections { get; set; }
+    public DbSet<UserSettingsDto> settings { get; set; }
+    public DbSet<ChatDto> chats { get; set; }
+    public DbSet<MessageDto> messages { get; set; }
+    public DbSet<ActiveUsersDto> activeUsers { get; set; }
 }

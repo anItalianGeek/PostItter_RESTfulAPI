@@ -8,6 +8,9 @@
     ".NETCoreApp,Version=v8.0": {
       "PostItter_RESTfulAPI/1.0.0": {
         "dependencies": {
+          "AWSSDK.Extensions.NETCore.Setup": "4.0.0-preview",
+          "AWSSDK.S3": "4.0.0-preview",
+          "Amazon.S3": "0.33.0",
           "Microsoft.AspNetCore.OpenApi": "8.0.7",
           "Microsoft.EntityFrameworkCore": "8.0.2",
           "Microsoft.EntityFrameworkCore.Design": "8.0.2",
@@ -19,6 +22,59 @@
         },
         "runtime": {
           "PostItter_RESTfulAPI.dll": {}
+        }
+      },
+      "Amazon.Core/0.33.0": {
+        "runtime": {
+          "lib/net8.0/Amazon.Core.dll": {
+            "assemblyVersion": "0.33.0.0",
+            "fileVersion": "0.33.0.0"
+          }
+        }
+      },
+      "Amazon.S3/0.33.0": {
+        "dependencies": {
+          "Amazon.Core": "0.33.0",
+          "Carbon.Storage": "3.15.0"
+        },
+        "runtime": {
+          "lib/net8.0/Amazon.S3.dll": {
+            "assemblyVersion": "0.33.0.0",
+            "fileVersion": "0.33.0.0"
+          }
+        }
+      },
+      "AWSSDK.Core/4.0.0-preview": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.0.0"
+          }
+        }
+      },
+      "AWSSDK.Extensions.NETCore.Setup/4.0.0-preview": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.0-preview",
+          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.0.0"
+          }
+        }
+      },
+      "AWSSDK.S3/4.0.0-preview": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.0-preview"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.0.0"
+          }
         }
       },
       "Azure.Core/1.35.0": {
@@ -52,6 +108,14 @@
           "lib/netstandard2.0/Azure.Identity.dll": {
             "assemblyVersion": "1.10.3.0",
             "fileVersion": "1.1000.323.51804"
+          }
+        }
+      },
+      "Carbon.Storage/3.15.0": {
+        "runtime": {
+          "lib/net8.0/Carbon.Storage.dll": {
+            "assemblyVersion": "3.15.0.0",
+            "fileVersion": "3.15.0.0"
           }
         }
       },
@@ -950,6 +1014,41 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Amazon.Core/0.33.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-pAUAgMdNFFDAgSkxxV4v7dGJkBn/NTk1gDSSaXnQBdoRqMp95zs9EHsUwbD/la3ybbRzaxM5Pbr12Qsn3pG+dw==",
+      "path": "amazon.core/0.33.0",
+      "hashPath": "amazon.core.0.33.0.nupkg.sha512"
+    },
+    "Amazon.S3/0.33.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cIF3i4/rujm7YwJ4gCi38CL73UCakmW936s6aetksGTZWzoVdsPcqI/uaX2L5DDq+yHgtpJsvIGYsqrVGrlwSQ==",
+      "path": "amazon.s3/0.33.0",
+      "hashPath": "amazon.s3.0.33.0.nupkg.sha512"
+    },
+    "AWSSDK.Core/4.0.0-preview": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fSf6Mk4m6rg/AfPpBDUMV+ZTUyC3GYwGeQ5rf9px4uNT0WKo0GdCLNhAl5NLwJCyYMocUYtzPjtnBuBgZRl4FA==",
+      "path": "awssdk.core/4.0.0-preview",
+      "hashPath": "awssdk.core.4.0.0-preview.nupkg.sha512"
+    },
+    "AWSSDK.Extensions.NETCore.Setup/4.0.0-preview": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-G3EjkRWccolELRXiszr+Pv2U+2fiTDb3f4SRfFn8yV51qGvpjabxjrV5UzOONngIbIVmS5qGcvxjKOOp4Hx8aQ==",
+      "path": "awssdk.extensions.netcore.setup/4.0.0-preview",
+      "hashPath": "awssdk.extensions.netcore.setup.4.0.0-preview.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.0.0-preview": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cWxxZx4dhwVeUtvWGOKh/QsrkMNHlwoieMIspIEKIlo7xdgW5blY77+icGOIVCEbV+Tyfo4jQpjxxLoK5qNWYA==",
+      "path": "awssdk.s3/4.0.0-preview",
+      "hashPath": "awssdk.s3.4.0.0-preview.nupkg.sha512"
+    },
     "Azure.Core/1.35.0": {
       "type": "package",
       "serviceable": true,
@@ -963,6 +1062,13 @@
       "sha512": "sha512-l1Xm2MWOF2Mzcwuarlw8kWQXLZk3UeB55aQXVyjj23aBfDwOZ3gu5GP2kJ6KlmZeZv2TCzw7x4L3V36iNr3gww==",
       "path": "azure.identity/1.10.3",
       "hashPath": "azure.identity.1.10.3.nupkg.sha512"
+    },
+    "Carbon.Storage/3.15.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-k6aoP3AhSselN5eSROUq3lFCv+XvwobMUUwTtzjl32F6Xs8R5nyZMWKjZ1Y5gVLhDbyfmY3W6F1DvL4MNvPX7w==",
+      "path": "carbon.storage/3.15.0",
+      "hashPath": "carbon.storage.3.15.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
