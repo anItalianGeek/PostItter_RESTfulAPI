@@ -54,11 +54,12 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseCors();
+
 // Usa routing
 app.UseRouting();
 
 app.UseHttpsRedirection();
-app.UseCors();
 
 // Mappa i controller
 app.MapControllers();

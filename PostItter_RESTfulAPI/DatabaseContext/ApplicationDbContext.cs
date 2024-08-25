@@ -22,4 +22,5 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChatDto> chats { get; set; }
     public DbSet<MessageDto> messages { get; set; }
     public DbSet<ActiveUsersDto> activeUsers { get; set; }
+    public DbSet<PasswordRecoveryTokenDto> passwordRecoveryTokens { get; set; }
 }

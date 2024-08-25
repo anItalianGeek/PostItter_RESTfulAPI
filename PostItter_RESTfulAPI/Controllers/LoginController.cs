@@ -19,11 +19,11 @@ public class LoginController : ControllerBase
         database = db;
     }
 
-    [HttpGet("check/{name}")]
+    [HttpGet("check")]
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<bool>> checkAvailability(string name)
+    public async Task<ActionResult<bool>> checkAvailability([FromQuery] string name)
     {
         try
         {
