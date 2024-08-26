@@ -95,7 +95,7 @@ public class PasswordRecoveryController : Controller
     [HttpPost("requestChange")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> requestPasswordChange([FromBody] EmailRequest email)
+    public async Task<IActionResult> requestPasswordChange([FromBody] string email)
     {
         string generatedToken = "";
         try
@@ -107,7 +107,7 @@ public class PasswordRecoveryController : Controller
 
             await database.passwordRecoveryTokens.AddAsync(new PasswordRecoveryTokenDto
                 {
-                    user_email = email.email,
+                    user_email = email,
                     expiring_at = DateTime.Now.AddMinutes(30),
                     token = generatedToken
                 }
@@ -120,7 +120,7 @@ public class PasswordRecoveryController : Controller
 
         try
         {
-            SendPasswordResetEmail(email.email, "https://localhost:5001/passwordRecovery?token=" + generatedToken);
+            SendPasswordResetEmail(email, "https://localhost:5001/passwordRecovery?token=" + generatedToken);
         }
         catch (Exception e)
         {
@@ -177,9 +177,4 @@ public class PasswordRecoveryController : Controller
         }
     }
     
-}
-
-public class EmailRequest
-{
-    public string email { get; set; }
 }
