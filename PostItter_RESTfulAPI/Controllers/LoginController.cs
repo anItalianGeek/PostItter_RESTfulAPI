@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models;
@@ -171,7 +172,7 @@ public class LoginController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> logout()
     {
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);

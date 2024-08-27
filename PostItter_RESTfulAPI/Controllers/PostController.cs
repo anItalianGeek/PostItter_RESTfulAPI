@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models;
@@ -380,7 +381,7 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> addNewPost([FromBody] Post post)
     {
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -471,7 +472,7 @@ public class PostController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -571,7 +572,7 @@ public class PostController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);

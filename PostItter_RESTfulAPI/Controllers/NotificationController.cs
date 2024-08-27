@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
+using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using PostItter_RESTfulAPI.Models;
@@ -27,6 +30,34 @@ public class NotificationController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         try
         {
             var dbNotifs = database.notifications
@@ -66,12 +97,65 @@ public class NotificationController : ControllerBase
     [HttpPost("newTo/{destination}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> addNewNotification([FromBody] Notification notif, string destination)
     {
         if (!long.TryParse(destination, out long numeric_id))
             return BadRequest("Invalid user ID");
         
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
+        UserSettingsDto user  = await database.settings.FirstOrDefaultAsync(record => record.user == numeric_id);
+        if (user == null)
+            return BadRequest("User Not Found");
+
+        switch (notif.type)
+        {
+            case "new-message":
+                if (user.messageNotification == false)
+                    return Unauthorized();
+                break;
+            case "new-follow":
+                if (user.followNotification == false)
+                    return Unauthorized();
+                break;
+            case "new-like":
+                if (user.likeNotification == false)
+                    return Unauthorized();
+                break;
+            case "new-comment":
+                if (user.commentNotification == false)
+                    return Unauthorized();
+                break;
+        }
+
         NotificationDto newNotif = new NotificationDto
         {
             content = notif.message,
@@ -92,6 +176,69 @@ public class NotificationController : ControllerBase
             return StatusCode(500, "Internal Server Error");
         }
     }
+
+    [HttpPost("newTo")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> tryTag([FromBody] Notification notification, [FromQuery] string mention)
+    {
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
+        mention = mention.Substring(1);
+        
+        UserDto user = await database.users.FirstOrDefaultAsync(record => record.username == mention || record.displayname == mention);
+        
+        if (user != null)
+            try
+            {
+                NotificationDto newNotif = new NotificationDto
+                {
+                    content = notification.message,
+                    post_ref = notification.postId == null ? 0 : Convert.ToInt64(notification.postId),
+                    type = notification.type,
+                    user_receiver = user.user_id,
+                    user_sender = Convert.ToInt64(notification.user.id)
+                }; 
+                    
+                await database.notifications.AddAsync(newNotif);
+                await database.SaveChangesAsync();
+                return Created();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Internal Server Error.");
+            }
+
+        return NotFound();
+    }
     
     [HttpDelete("delete/{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -103,6 +250,34 @@ public class NotificationController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
+        
         NotificationDto notification = await database.notifications.FirstOrDefaultAsync(record => record.notification_id == numeric_id);
         
         if (notification == null)
@@ -128,6 +303,34 @@ public class NotificationController : ControllerBase
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
+        
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        {
+            string token = authHeader.ToString().Replace("Bearer ", "");
+            JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
+
+            string check = Base64UrlEncoder.Encode(jwtWebToken.sub) +
+                           Base64UrlEncoder.Encode(jwtWebToken.displayname) +
+                           Base64UrlEncoder.Encode(jwtWebToken.username) +
+                           Base64UrlEncoder.Encode(jwtWebToken.iat.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
+                           Base64UrlEncoder.Encode(jwtWebToken.server_signature);
+
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
+            ActiveUsersDto activeUser =
+                await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
+
+            if (activeUser == null)
+                return StatusCode(401,
+                    "Cannot perform action, user might not be signed up or authorization token might be corrupted.");
+            
+            if (check != activeUser.encodedToken)
+                return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }
         
         try
         { 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.VisualBasic.CompilerServices;
 using PostItter_RESTfulAPI.DatabaseContext;
@@ -31,7 +32,7 @@ public class MessageController : ControllerBase
         if (!long.TryParse(user_id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -94,7 +95,7 @@ public class MessageController : ControllerBase
         if (!long.TryParse(chat_id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -158,7 +159,7 @@ public class MessageController : ControllerBase
         if (!long.TryParse(user_id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -221,7 +222,7 @@ public class MessageController : ControllerBase
         if (!long.TryParse(chat_id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
