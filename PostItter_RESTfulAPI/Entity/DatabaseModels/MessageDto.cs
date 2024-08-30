@@ -12,6 +12,7 @@ public class MessageDto
     public string file_url { get; set; }
     public long sender_id { get; set; }
     public long chat_ref { get; set; }
+    
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public DateTime sent_at { get; set; }
 }

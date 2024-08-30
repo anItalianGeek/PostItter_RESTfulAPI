@@ -168,6 +168,12 @@ namespace PostItter_RESTfulAPI.Migrations
                     b.Property<long>("sender_id")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime>("sent_at")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime(6)");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlComputedColumn(b.Property<DateTime>("sent_at"));
+
                     b.HasKey("message_id");
 
                     b.ToTable("messages");

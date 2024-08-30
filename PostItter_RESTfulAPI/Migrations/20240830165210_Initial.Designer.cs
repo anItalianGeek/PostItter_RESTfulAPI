@@ -12,7 +12,7 @@ using PostItter_RESTfulAPI.DatabaseContext;
 namespace PostItter_RESTfulAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240829131133_Initial")]
+    [Migration("20240830165210_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -170,6 +170,12 @@ namespace PostItter_RESTfulAPI.Migrations
 
                     b.Property<long>("sender_id")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime>("sent_at")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime(6)");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlComputedColumn(b.Property<DateTime>("sent_at"));
 
                     b.HasKey("message_id");
 
