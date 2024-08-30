@@ -310,6 +310,10 @@ namespace PostItter_RESTfulAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("secureKey2fa")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("username")
                         .IsRequired()
                         .HasColumnType("longtext");
