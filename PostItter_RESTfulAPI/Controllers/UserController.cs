@@ -211,15 +211,8 @@ public class UserController : ControllerBase
                         profilePicture = searchedUser.profilePicture
                     };
                 }
-
-                HashtagDto[] hashes = await database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id)
-                    .ToArrayAsync();
-                posts[i].hashtags = new String[hashes.Length];
-                for (int j = 0; j < hashes.Length; j++)
-                {
-                    posts[i].hashtags[j] = hashes[j].content;
-                }
-
+                
+                posts[i].hashtags = await database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).Select(e => e.content).ToArrayAsync();
                 posts[i].id = dbPosts[i].post_id.ToString();
                 posts[i].likes = dbPosts[i].likes;
                 posts[i].reposts = dbPosts[i].reposts;
@@ -462,6 +455,7 @@ public class UserController : ControllerBase
     
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status307TemporaryRedirect)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -508,6 +502,7 @@ public class UserController : ControllerBase
         if (userToUpdate == null || userSettings == null)
             return NotFound("Requested User Does Not Exist.");
 
+        bool twoFaChanged = false;
         if (newData.bio != userToUpdate.bio)
             userToUpdate.bio = newData.bio;
         if (newData.displayName != userToUpdate.displayname)
@@ -527,7 +522,11 @@ public class UserController : ControllerBase
         if (newData.darkMode != userSettings.darkMode)
             userSettings.darkMode = (bool) newData.darkMode;
         if (newData.twoFA != userSettings.twoFA)
-            userSettings.twoFA = (bool) newData.twoFA;
+        {
+            userSettings.twoFA = (bool)newData.twoFA;
+            twoFaChanged = true;
+        }
+
         if (newData.likeNotification != userSettings.likeNotification)
             userSettings.likeNotification = (bool)newData.likeNotification;
         if (newData.commentNotification != userSettings.commentNotification)
@@ -542,7 +541,15 @@ public class UserController : ControllerBase
         try
         {
             await database.SaveChangesAsync();
-            return Accepted();
+            if (twoFaChanged)
+                if (userSettings.twoFA)
+                    return RedirectPreserveMethod("http://localhost:5265/api/2fa/activate");
+                    //return StatusCode(307, new { Location = "http://localhost:5265/api/2fa/activate" });
+                else
+                    return RedirectPreserveMethod("http://localhost:5265/api/2fa/deactivate");
+                    //return StatusCode(307, new { Location = "http://localhost:5265/api/2fa/deactivate" });
+            else
+                return Accepted();
         }
         catch (Exception)
         {

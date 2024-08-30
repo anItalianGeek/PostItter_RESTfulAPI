@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "theB5s26xkM=",
+  "dgSpecHash": "tS9uUijSEt0=",
   "success": true,
   "projectFilePath": "/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj",
   "expectedPackageFiles": [
@@ -12,6 +12,7 @@
     "/home/ognjen/.nuget/packages/azure.core/1.35.0/azure.core.1.35.0.nupkg.sha512",
     "/home/ognjen/.nuget/packages/azure.identity/1.10.3/azure.identity.1.10.3.nupkg.sha512",
     "/home/ognjen/.nuget/packages/carbon.storage/3.15.0/carbon.storage.3.15.0.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/googleauthenticator/3.3.0-beta1/googleauthenticator.3.3.0-beta1.nupkg.sha512",
     "/home/ognjen/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/home/ognjen/.nuget/packages/microsoft.aspnetcore.openapi/8.0.7/microsoft.aspnetcore.openapi.8.0.7.nupkg.sha512",
     "/home/ognjen/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
@@ -57,6 +58,7 @@
     "/home/ognjen/.nuget/packages/mono.texttemplating/2.2.1/mono.texttemplating.2.2.1.nupkg.sha512",
     "/home/ognjen/.nuget/packages/mysqlconnector/2.3.5/mysqlconnector.2.3.5.nupkg.sha512",
     "/home/ognjen/.nuget/packages/pomelo.entityframeworkcore.mysql/8.0.2/pomelo.entityframeworkcore.mysql.8.0.2.nupkg.sha512",
+    "/home/ognjen/.nuget/packages/qrcoder/1.4.3/qrcoder.1.4.3.nupkg.sha512",
     "/home/ognjen/.nuget/packages/swashbuckle.aspnetcore/6.4.0/swashbuckle.aspnetcore.6.4.0.nupkg.sha512",
     "/home/ognjen/.nuget/packages/swashbuckle.aspnetcore.swagger/6.4.0/swashbuckle.aspnetcore.swagger.6.4.0.nupkg.sha512",
     "/home/ognjen/.nuget/packages/swashbuckle.aspnetcore.swaggergen/6.4.0/swashbuckle.aspnetcore.swaggergen.6.4.0.nupkg.sha512",

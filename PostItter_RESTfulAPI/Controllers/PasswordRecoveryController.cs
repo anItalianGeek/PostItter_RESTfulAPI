@@ -11,7 +11,7 @@ namespace PostItter_RESTfulAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class PasswordRecoveryController : Controller
+public class PasswordRecoveryController : ControllerBase
 {
     private readonly ApplicationDbContext database;
 

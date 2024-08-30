@@ -12,7 +12,7 @@ using PostItter_RESTfulAPI.DatabaseContext;
 namespace PostItter_RESTfulAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240825123538_Initial")]
+    [Migration("20240829131133_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -310,6 +310,10 @@ namespace PostItter_RESTfulAPI.Migrations
                         .HasColumnType("longtext");
 
                     b.Property<string>("profilePicture")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("secureKey2fa")
                         .IsRequired()
                         .HasColumnType("longtext");
 

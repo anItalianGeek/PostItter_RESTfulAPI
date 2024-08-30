@@ -52,9 +52,6 @@ public class PostController : ControllerBase
                 UserDto user = await database.users.FirstOrDefaultAsync(record => record.user_id == element.user_id);
                 if (user == null)
                     return NotFound("A post was requested but the user doesn't exist.");
-                HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == element.post_id).ToArrayAsync();
-                string[] hashes = new string[hashtags.Length];
-                for (int j = 0; j < hashtags.Length; j++) hashes[j] = hashtags[j].content;
                 list.Add(new Post
                 {
                     id = element.post_id.ToString(),
@@ -69,7 +66,7 @@ public class PostController : ControllerBase
                         id = user.user_id.ToString(),
                         profilePicture = user.profilePicture
                     },
-                    hashtags = hashes,
+                    hashtags = await database.hashtags.Where(record => record.post_ref == element.post_id).Select(e => e.content).ToArrayAsync(),
                     comments = [],
                     color = element.color
                 });
@@ -77,9 +74,9 @@ public class PostController : ControllerBase
 
             return Ok(list);
         }
-        catch (Exception)
+        catch (Exception e )
         {
-            return StatusCode(500, "Internal Server Error");
+            return StatusCode(500, $"Internal Server Error. {e.Message}");
         }
     }
     
@@ -120,9 +117,7 @@ public class PostController : ControllerBase
                 returnedPost.shares = post.shares;
                 returnedPost.color = post.color;
                 returnedPost.user = new User();
-                HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).ToArrayAsync();
-                returnedPost.hashtags = new string[hashtags.Length];
-                for (int j = 0; j < hashtags.Length; j++) returnedPost.hashtags[j] = hashtags[j].content;
+                returnedPost.hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).Select(e => e.content).ToArrayAsync();
                 CommentDto[] _comments = await database.comments.Where(record => record.post == numeric_id).ToArrayAsync();
                 returnedPost.comments = new Comment[_comments.Length];
                 for (int j = 0; j < _comments.Length; j++)
@@ -189,10 +184,7 @@ public class PostController : ControllerBase
              posts[i].reposts = dbPosts[i].reposts;
              posts[i].shares = dbPosts[i].shares;
              posts[i].color = dbPosts[i].color;
-             
-             HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).ToArrayAsync();
-             posts[i].hashtags = new string[hashtags.Length];
-             for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
+             posts[i].hashtags = await database.hashtags.Where(record => record.post_ref == numeric_id).Select(e => e.content).ToArrayAsync();
              
              // comments aren't needed since you have to view the post in detail to see the comments
              
@@ -253,9 +245,7 @@ public class PostController : ControllerBase
                         username = user.username,
                         profilePicture = user.profilePicture
                     };
-                    HashtagDto[] hashtags = await database.hashtags.Where(record => record.post_ref == currentPost.post_id).ToArrayAsync();
-                    posts[i].hashtags = new string[hashtags.Length];
-                    for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
+                    posts[i].hashtags = await database.hashtags.Where(record => record.post_ref == currentPost.post_id).Select(e => e.content).ToArrayAsync();
                     CommentDto[] _comments = await database.comments.Where(record => record.post == currentPost.post_id).ToArrayAsync();
                     posts[i].comments = new Comment[_comments.Length];
                     for (int j = 0; j < _comments.Length; j++)
@@ -302,14 +292,10 @@ public class PostController : ControllerBase
                         displayName = postingPerson.displayname,
                         username = postingPerson.username
                     };
-                    Task<HashtagDto[]> retrieveHashtags = database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).ToArrayAsync();
-                    Task<CommentDto[]> retrieveComments = database.comments.Where(record => record.post == dbPosts[i].post_id).ToArrayAsync();
-                    HashtagDto[] hashtags = await retrieveHashtags;
-                    CommentDto[] postComments = await retrieveComments;
-                    posts[i].hashtags = new string[hashtags.Length];
-                    for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
-                    posts[i].comments = new Comment[postComments.Length];
-                    for (int j = 0; j < postComments.Length; j++)
+                    posts[i].hashtags = await database.hashtags.Where(record => record.post_ref == dbPosts[i].post_id).Select(e => e.content).ToArrayAsync();
+                    List<CommentDto> postComments = await database.comments.Where(record => record.post == dbPosts[i].post_id).ToListAsync();
+                    posts[i].comments = new Comment[postComments.Count];
+                    for (int j = 0; j < postComments.Count; j++)
                     {
                         UserDto commentingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == postComments[j].user);
                         posts[i].comments[j].user = new User
@@ -344,14 +330,10 @@ public class PostController : ControllerBase
                         username = myself.username,
                         profilePicture = myself.profilePicture
                     };
-                    Task<HashtagDto[]> retrieveHashtags = database.hashtags.Where(record => record.post_ref == repostedPosts[i].post_id).ToArrayAsync();
-                    Task<CommentDto[]> retrieveComments = database.comments.Where(record => record.post == repostedPosts[i].post_id).ToArrayAsync();
-                    HashtagDto[] hashtags = await retrieveHashtags;
-                    CommentDto[] _comments = await retrieveComments;
-                    posts[i].hashtags = new string[hashtags.Length];
-                    for (int j = 0; j < hashtags.Length; j++) posts[i].hashtags[j] = hashtags[j].content;
-                    posts[i].comments = new Comment[_comments.Length];
-                    for (int j = 0; j < _comments.Length; j++)
+                    posts[i].hashtags = await database.hashtags.Where(record => record.post_ref == repostedPosts[i].post_id).Select(e => e.content).ToArrayAsync();
+                    List<CommentDto> _comments = await database.comments.Where(record => record.post == repostedPosts[i].post_id).ToListAsync();
+                    posts[i].comments = new Comment[_comments.Count];
+                    for (int j = 0; j < _comments.Count; j++)
                     {
                         UserDto commentingUser = database.users.FirstOrDefault(record => record.user_id == _comments[j].user);
                         posts[i].comments[j] = new Comment

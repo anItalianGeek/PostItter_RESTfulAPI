@@ -11,6 +11,7 @@
           "AWSSDK.Extensions.NETCore.Setup": "4.0.0-preview",
           "AWSSDK.S3": "4.0.0-preview",
           "Amazon.S3": "0.33.0",
+          "GoogleAuthenticator": "3.3.0-beta1",
           "Microsoft.AspNetCore.OpenApi": "8.0.7",
           "Microsoft.EntityFrameworkCore": "8.0.2",
           "Microsoft.EntityFrameworkCore.Design": "8.0.2",
@@ -116,6 +117,17 @@
           "lib/net8.0/Carbon.Storage.dll": {
             "assemblyVersion": "3.15.0.0",
             "fileVersion": "3.15.0.0"
+          }
+        }
+      },
+      "GoogleAuthenticator/3.3.0-beta1": {
+        "dependencies": {
+          "QRCoder": "1.4.3"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Google.Authenticator.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.0.0"
           }
         }
       },
@@ -714,6 +726,14 @@
           }
         }
       },
+      "QRCoder/1.4.3": {
+        "runtime": {
+          "lib/net6.0/QRCoder.dll": {
+            "assemblyVersion": "1.4.3.0",
+            "fileVersion": "1.4.3.0"
+          }
+        }
+      },
       "Swashbuckle.AspNetCore/6.4.0": {
         "dependencies": {
           "Microsoft.Extensions.ApiDescription.Server": "6.0.5",
@@ -1070,6 +1090,13 @@
       "path": "carbon.storage/3.15.0",
       "hashPath": "carbon.storage.3.15.0.nupkg.sha512"
     },
+    "GoogleAuthenticator/3.3.0-beta1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uEzMLMZMVIghcMCL1fWRIZGjkOMsKz3tOBUcxlCSFY4OB/GwtCfGroEbcbJnsY3vcDQsz56XnJR275C3Hkf+lw==",
+      "path": "googleauthenticator/3.3.0-beta1",
+      "hashPath": "googleauthenticator.3.3.0-beta1.nupkg.sha512"
+    },
     "Humanizer.Core/2.14.1": {
       "type": "package",
       "serviceable": true,
@@ -1384,6 +1411,13 @@
       "sha512": "sha512-XjnlcxVBLnEMbyEc5cZzgZeDyLvAniACZQ04W1slWN0f4rmfNzl98gEMvHnFH0fMDF06z9MmgGi/Sr7hJ+BVnw==",
       "path": "pomelo.entityframeworkcore.mysql/8.0.2",
       "hashPath": "pomelo.entityframeworkcore.mysql.8.0.2.nupkg.sha512"
+    },
+    "QRCoder/1.4.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fWuFqjm8GTlEb2GqBl3Hi8HZZeZQwBSHxvRPtPjyNbT82H0ff0JwavKRBmMaXCno1Av6McPC8aJzri0Mj2w9Jw==",
+      "path": "qrcoder/1.4.3",
+      "hashPath": "qrcoder.1.4.3.nupkg.sha512"
     },
     "Swashbuckle.AspNetCore/6.4.0": {
       "type": "package",

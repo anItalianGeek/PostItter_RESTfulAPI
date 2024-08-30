@@ -136,7 +136,7 @@ public class NotificationController : ControllerBase
         if (user == null)
             return BadRequest("User Not Found");
 
-        switch (notif.type)
+        switch (notif.type) // user *should* be always notified when getting tagged in posts
         {
             case "new-message":
                 if (user.messageNotification == false)

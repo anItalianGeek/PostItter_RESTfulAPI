@@ -1,4 +1,6 @@
+using System.Net.WebSockets;
 using Microsoft.EntityFrameworkCore;
+using PostItter_RESTfulAPI;
 using PostItter_RESTfulAPI.DatabaseContext;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,23 +10,22 @@ builder.Services.AddControllers(options =>
 {
     options.ReturnHttpNotAcceptable = true;
 });
-builder.Services.AddDbContext<ApplicationDbContext>(option =>
-    option.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"), 
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(8, 0, 37))
     ));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-// TODO add aws connections
 
 // Configura CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        builder.AllowAnyOrigin();
+        builder.AllowAnyMethod();
+        builder.AllowAnyHeader();
     });
 });
 
@@ -43,23 +44,37 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1"));
 }
 
+app.UseCors();
+
+app.UseWebSockets();
+
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/")
+    if (context.Request.Path.StartsWithSegments("/ws/chat", out var remainingPath))
     {
-        context.Response.Redirect("/swagger/index.html");
-        return;
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            string chatId = remainingPath.ToString().Trim('/');
+            WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            await WebSocketHandler.HandleWebSocket(context, webSocket, chatId);
+        }
+        else
+        {
+            context.Response.StatusCode = 400;
+        }
     }
-
-    await next();
+    else
+    {
+        await next();
+    }
 });
 
-app.UseCors();
+
 
 // Usa routing
 app.UseRouting();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 // Mappa i controller
 app.MapControllers();

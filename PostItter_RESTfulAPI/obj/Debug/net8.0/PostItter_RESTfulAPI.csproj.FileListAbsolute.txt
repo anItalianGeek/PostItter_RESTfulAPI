@@ -144,3 +144,5 @@
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/bin/Debug/net8.0/AWSSDK.Extensions.NETCore.Setup.dll
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/bin/Debug/net8.0/AWSSDK.S3.dll
 /home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/bin/Debug/net8.0/Carbon.Storage.dll
+/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/bin/Debug/net8.0/Google.Authenticator.dll
+/home/ognjen/All about Coding/Progetti Personali/PostItter_RESTfulAPI/PostItter_RESTfulAPI/bin/Debug/net8.0/QRCoder.dll

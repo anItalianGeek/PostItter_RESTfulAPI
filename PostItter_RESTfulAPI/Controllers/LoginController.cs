@@ -43,7 +43,7 @@ public class LoginController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<JwtWebToken>> login([FromBody] LoginUserInput input)
+    public async Task<IActionResult> login([FromBody] LoginUserInput input)
     {
         if (
             input.password.Contains("'") || 
@@ -57,8 +57,11 @@ public class LoginController : ControllerBase
         ) return StatusCode(406, "Input not acceptable");
         
         UserDto user = await database.users.FirstOrDefaultAsync(record => record.email == input.email && record.password == input.password);
-
+        UserSettingsDto settings = await database.settings.FirstOrDefaultAsync(record => record.user == user.user_id);
+        
         if (user == null) return NotFound("User Does Not Exist.");
+        else if (settings == null) return NotFound("Server is missing settings for the desired user.");
+        else if (settings.twoFA) return RedirectPreserveMethod($"http://localhost:5265/api/2fa/authenticate?id_active_user={user.user_id}");
         else
         {
             string s_signature = "";

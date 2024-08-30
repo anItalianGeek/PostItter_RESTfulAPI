@@ -128,6 +128,22 @@
           "lib/net8.0/Carbon.Storage.dll": {}
         }
       },
+      "GoogleAuthenticator/3.3.0-beta1": {
+        "type": "package",
+        "dependencies": {
+          "QRCoder": "1.4.3"
+        },
+        "compile": {
+          "lib/netstandard2.0/Google.Authenticator.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Google.Authenticator.dll": {
+            "related": ".pdb"
+          }
+        }
+      },
       "Humanizer.Core/2.14.1": {
         "type": "package",
         "compile": {
@@ -1047,6 +1063,15 @@
           }
         }
       },
+      "QRCoder/1.4.3": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/QRCoder.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/QRCoder.dll": {}
+        }
+      },
       "Swashbuckle.AspNetCore/6.4.0": {
         "type": "package",
         "dependencies": {
@@ -1879,6 +1904,22 @@
         "carbon.storage.3.15.0.nupkg.sha512",
         "carbon.storage.nuspec",
         "lib/net8.0/Carbon.Storage.dll"
+      ]
+    },
+    "GoogleAuthenticator/3.3.0-beta1": {
+      "sha512": "uEzMLMZMVIghcMCL1fWRIZGjkOMsKz3tOBUcxlCSFY4OB/GwtCfGroEbcbJnsY3vcDQsz56XnJR275C3Hkf+lw==",
+      "type": "package",
+      "path": "googleauthenticator/3.3.0-beta1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "googleauthenticator.3.3.0-beta1.nupkg.sha512",
+        "googleauthenticator.nuspec",
+        "lib/net462/Google.Authenticator.dll",
+        "lib/net462/Google.Authenticator.pdb",
+        "lib/netstandard2.0/Google.Authenticator.dll",
+        "lib/netstandard2.0/Google.Authenticator.pdb"
       ]
     },
     "Humanizer.Core/2.14.1": {
@@ -3542,6 +3583,27 @@
         "pomelo.entityframeworkcore.mysql.nuspec"
       ]
     },
+    "QRCoder/1.4.3": {
+      "sha512": "fWuFqjm8GTlEb2GqBl3Hi8HZZeZQwBSHxvRPtPjyNbT82H0ff0JwavKRBmMaXCno1Av6McPC8aJzri0Mj2w9Jw==",
+      "type": "package",
+      "path": "qrcoder/1.4.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net35/QRCoder.dll",
+        "lib/net40/QRCoder.dll",
+        "lib/net5.0-windows7.0/QRCoder.dll",
+        "lib/net5.0/QRCoder.dll",
+        "lib/net6.0-windows7.0/QRCoder.dll",
+        "lib/net6.0/QRCoder.dll",
+        "lib/netstandard1.3/QRCoder.dll",
+        "lib/netstandard2.0/QRCoder.dll",
+        "nuget-icon.png",
+        "nuget-readme.md",
+        "qrcoder.1.4.3.nupkg.sha512",
+        "qrcoder.nuspec"
+      ]
+    },
     "Swashbuckle.AspNetCore/6.4.0": {
       "sha512": "eUBr4TW0up6oKDA5Xwkul289uqSMgY0xGN4pnbOIBqCcN9VKGGaPvHX3vWaG/hvocfGDP+MGzMA0bBBKz2fkmQ==",
       "type": "package",
@@ -4800,6 +4862,7 @@
       "AWSSDK.Extensions.NETCore.Setup >= 4.0.0-preview",
       "AWSSDK.S3 >= 4.0.0-preview",
       "Amazon.S3 >= 0.33.0",
+      "GoogleAuthenticator >= 3.3.0-beta1",
       "Microsoft.AspNetCore.OpenApi >= 8.0.7",
       "Microsoft.EntityFrameworkCore >= 8.0.2",
       "Microsoft.EntityFrameworkCore.Design >= 8.0.2",
@@ -4863,6 +4926,10 @@
           "Amazon.S3": {
             "target": "Package",
             "version": "[0.33.0, )"
+          },
+          "GoogleAuthenticator": {
+            "target": "Package",
+            "version": "[3.3.0-beta1, )"
           },
           "Microsoft.AspNetCore.OpenApi": {
             "target": "Package",
