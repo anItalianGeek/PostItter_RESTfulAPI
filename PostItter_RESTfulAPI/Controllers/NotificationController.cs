@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
@@ -30,7 +31,7 @@ public class NotificationController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -56,15 +57,14 @@ public class NotificationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         {
             var dbNotifs = database.notifications
                 .Where(n => n.user_receiver == numeric_id);
 
-            if (dbNotifs == null)
-                return Ok(null);
+            if (dbNotifs == null) return Ok(null);
             
             Notification[] notifs = new Notification[dbNotifs.Count()];
             for (int i = 0; i < dbNotifs.Count(); i++)
@@ -99,12 +99,15 @@ public class NotificationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> addNewNotification([FromBody] Notification notif, string destination)
+    public async Task<IActionResult> addNewNotification([FromBody] Notification notif, string destination, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(destination, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        if (!long.TryParse(id_current_user, out long currentUser))
+            return BadRequest("Invalid current user ID");
+            
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -116,7 +119,6 @@ public class NotificationController : ControllerBase
                            Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
                            Base64UrlEncoder.Encode(jwtWebToken.server_signature);
 
-            long currentUser = Convert.ToInt64(jwtWebToken.sub);
             ActiveUsersDto activeUser =
                 await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
 
@@ -130,7 +132,7 @@ public class NotificationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         UserSettingsDto user  = await database.settings.FirstOrDefaultAsync(record => record.user == numeric_id);
         if (user == null)
@@ -141,19 +143,33 @@ public class NotificationController : ControllerBase
             case "new-message":
                 if (user.messageNotification == false)
                     return Unauthorized();
+                
+                notif.message = " sent you a message";
+                long chatId = Convert.ToInt64(notif.postId); // here i can use postId to understand the context of the chat
+                if ((await database.chats.FirstOrDefaultAsync(record =>
+                        record.member_id == currentUser && record.chat_id == chatId)) == null)
+                    return Unauthorized();
                 break;
             case "new-follow":
                 if (user.followNotification == false)
                     return Unauthorized();
+                notif.message = " started following you";
                 break;
             case "new-like":
                 if (user.likeNotification == false)
                     return Unauthorized();
+                notif.message = " liked one of your posts";
                 break;
             case "new-comment":
                 if (user.commentNotification == false)
                     return Unauthorized();
+                notif.message = " commented on one of your posts";
                 break;
+            case "new-tag":
+                notif.message = " tagged you.";
+                break;
+            default:
+                return BadRequest("Invalid notification type");
         }
 
         NotificationDto newNotif = new NotificationDto
@@ -171,9 +187,9 @@ public class NotificationController : ControllerBase
             await database.SaveChangesAsync();
             return Created();
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            return StatusCode(500, "Internal Server Error");
+            return StatusCode(500, $"Internal Server Error. {(e.InnerException == null ? e.InnerException.Message : e.Message)}");
         }
     }
 
@@ -184,7 +200,7 @@ public class NotificationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> tryTag([FromBody] Notification notification, [FromQuery] string mention)
     {
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -210,18 +226,19 @@ public class NotificationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
-        mention = mention.Substring(1);
+        if (mention[0] == '@')
+            mention = mention.Substring(1);
         
-        UserDto user = await database.users.FirstOrDefaultAsync(record => record.username == mention || record.displayname == mention);
+        UserDto user = await database.users.FirstOrDefaultAsync(record => record.username == mention);
         
         if (user != null)
             try
             {
                 NotificationDto newNotif = new NotificationDto
                 {
-                    content = notification.message,
+                    content = "tagged you.",
                     post_ref = notification.postId == null ? 0 : Convert.ToInt64(notification.postId),
                     type = notification.type,
                     user_receiver = user.user_id,
@@ -232,12 +249,12 @@ public class NotificationController : ControllerBase
                 await database.SaveChangesAsync();
                 return Created();
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return StatusCode(500, "Internal Server Error.");
+                return StatusCode(500, $"Internal Server Error.  {(e.InnerException != null ? e.InnerException.Message : e.Message)}");
             }
 
-        return NotFound();
+        return NoContent();
     }
     
     [HttpDelete("delete/{id}")]
@@ -250,7 +267,7 @@ public class NotificationController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -276,7 +293,7 @@ public class NotificationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         NotificationDto notification = await database.notifications.FirstOrDefaultAsync(record => record.notification_id == numeric_id);
         
@@ -304,7 +321,7 @@ public class NotificationController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -330,7 +347,7 @@ public class NotificationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         { 

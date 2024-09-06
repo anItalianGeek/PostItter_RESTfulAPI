@@ -1,5 +1,6 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Model;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using PostItter_RESTfulAPI.Models;
 using PutObjectRequest = Amazon.S3.Model.PutObjectRequest;

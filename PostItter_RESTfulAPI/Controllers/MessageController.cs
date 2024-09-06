@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
@@ -20,19 +21,19 @@ public class MessageController : ControllerBase
         database = db;
     }
 
-    [HttpGet("retrieveChats/{user_id}")]
+    [HttpGet("retrieveChats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<Chat[]>> getAllChats(string user_id)
+    public async Task<ActionResult<Chat[]>> getAllChats([FromQuery] string user_id)
     {
         if (!long.TryParse(user_id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        long currentUser;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        long currentUser = numeric_id; 
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -58,7 +59,7 @@ public class MessageController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         {
@@ -119,13 +120,15 @@ public class MessageController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<Chat>> getChat(string chat_id)
+    public async Task<ActionResult<Chat>> getChat(string chat_id, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(chat_id, out long numeric_id))
             return BadRequest("Invalid user ID");
+        
+        if (!long.TryParse(id_current_user, out long current_user_id))
+            return BadRequest("Invalid user ID");
 
-        long currentUser;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -137,7 +140,7 @@ public class MessageController : ControllerBase
                            Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
                            Base64UrlEncoder.Encode(jwtWebToken.server_signature);
 
-            currentUser = Convert.ToInt64(jwtWebToken.sub);
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
             ActiveUsersDto activeUser =
                 await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
 
@@ -151,7 +154,7 @@ public class MessageController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
 
         try
         {
@@ -171,7 +174,7 @@ public class MessageController : ControllerBase
 
             if (chats.Count > 0)
             {
-                MessageDto lastMessage = await database.messages.Where(record => record.sender_id == currentUser && record.chat_ref == numeric_id)
+                MessageDto lastMessage = await database.messages.Where(record => record.sender_id == current_user_id && record.chat_ref == numeric_id)
                     .OrderBy(e => e.sent_at).FirstOrDefaultAsync();
                 
                 Chat returnedChat = new Chat
@@ -206,13 +209,15 @@ public class MessageController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<Message[]>> getMessagesFromChat(string chat_id)
+    public async Task<ActionResult<Message[]>> getMessagesFromChat(string chat_id, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(chat_id, out long numeric_id))
             return BadRequest("Invalid user ID");
+        
+        if (!long.TryParse(id_current_user, out long current_user_id))
+            return BadRequest("Invalid user ID");
 
-        long currentUser;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -224,7 +229,7 @@ public class MessageController : ControllerBase
                            Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
                            Base64UrlEncoder.Encode(jwtWebToken.server_signature);
 
-            currentUser = Convert.ToInt64(jwtWebToken.sub);
+            long currentUser = Convert.ToInt64(jwtWebToken.sub);
             ActiveUsersDto activeUser =
                 await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUser);
 
@@ -238,7 +243,7 @@ public class MessageController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         {
@@ -275,18 +280,21 @@ public class MessageController : ControllerBase
         }
     }
 
-    [HttpPost("createChat/{user_id}")]
+    [HttpPost("createChat")]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> createChat(string user_id)
+    public async Task<IActionResult> createChat([FromQuery] string user_id, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(user_id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        long currentUserId;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        if (!long.TryParse(id_current_user, out long currentUserId_))
+            return BadRequest("Invalid user ID");
+        
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -298,7 +306,7 @@ public class MessageController : ControllerBase
                            Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
                            Base64UrlEncoder.Encode(jwtWebToken.server_signature);
 
-            currentUserId = Convert.ToInt64(jwtWebToken.sub);
+            long currentUserId = Convert.ToInt64(jwtWebToken.sub);
             ActiveUsersDto activeUser =
                 await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUserId);
 
@@ -308,18 +316,43 @@ public class MessageController : ControllerBase
             
             if (check != activeUser.encodedToken)
                 return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
+            
+            if (await database.blockedUsers.FirstOrDefaultAsync(record => record.user == currentUserId && record.blocked_user == numeric_id) != null)
+                return StatusCode(406, "Request Not Acceptable. Requested User is Blocked.");
+        
+            if (await database.blockedUsers.FirstOrDefaultAsync(record => record.blocked_user == currentUserId && record.user == numeric_id) != null)
+                return StatusCode(406, "Request Not Acceptable. The requested user has blocked you.");
         }
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
+        }*/
+
+        List<ChatDto> chatSet1 = await database.chats.Where(record => record.member_id == numeric_id).ToListAsync();
+        List<ChatDto> chatSet2 = await database.chats.Where(record => record.member_id == currentUserId_).ToListAsync();
+        int len = chatSet1.Count > chatSet2.Count ? chatSet2.Count : chatSet1.Count;
+        for (int i = 0; i < len; i++)
+        {
+            if (chatSet1[i].chat_id == chatSet2[i].chat_id)
+                return BadRequest("Cannot create a chat that already exists.");
         }
         
-        UserDto currentUser = await database.users.FirstOrDefaultAsync(record => record.user_id == currentUserId);
         try
         {
+            UserDto currentUser = await database.users.FirstOrDefaultAsync(record => record.user_id == currentUserId_);
+            if (currentUser == null)
+                return NotFound("Current user not found.");
+            
             UserDto chatMember = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
             if (chatMember == null)
                 return NotFound("Chat cannot be created. Member doesn't exist.");
+            
+            UserSettingsDto chatMemberSettings = await database.settings.FirstOrDefaultAsync(record => record.user == chatMember.user_id);
+            if (chatMemberSettings == null)
+                return NotFound("Database is missing the chat member settings.");
+
+            if (!chatMemberSettings.everyoneCanText && (await database.connections.FirstOrDefaultAsync(record => record.user == currentUserId_ && record.following_user == chatMember.user_id)) == null)
+                return Unauthorized("Cannot text a user who doesn't allow everyone to text them.");
             
             List<long> chatIds = await database.chats.Select(record => record.chat_id).Distinct().ToListAsync();
             if (chatIds.Count > 1)
@@ -386,13 +419,15 @@ public class MessageController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SendMessage(string chat_id, [FromBody] Message message)
+    public async Task<IActionResult> SendMessage(string chat_id, [FromBody] Message message, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(chat_id, out long numericChatId))
             return BadRequest("Invalid chat ID.");
-
-        long currentUserId;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        
+        if (!long.TryParse(id_current_user, out long numeric_id))
+            return BadRequest("Invalid user ID");
+        
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -404,7 +439,7 @@ public class MessageController : ControllerBase
                            Base64UrlEncoder.Encode(jwtWebToken.exp.ToString()) +
                            Base64UrlEncoder.Encode(jwtWebToken.server_signature);
 
-            currentUserId = Convert.ToInt64(jwtWebToken.sub);
+            long currentUserId = Convert.ToInt64(jwtWebToken.sub);
             ActiveUsersDto activeUser =
                 await database.activeUsers.FirstOrDefaultAsync(record => record.user_ref == currentUserId);
 
@@ -418,7 +453,7 @@ public class MessageController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         {
@@ -426,13 +461,13 @@ public class MessageController : ControllerBase
 
             if (chat == null)
                 return NotFound("Requested Chat Doesn't Exist.");
-
+            
             var newMessage = new MessageDto
             {
                 content = message.content,
                 chat_ref = numericChatId,
                 file_url = message.file_url == null ? null : message.file_url,
-                sender_id = currentUserId
+                sender_id = numeric_id
             };
 
             await database.messages.AddAsync(newMessage);
@@ -451,12 +486,15 @@ public class MessageController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> deleteChat(string chatId)
+    public async Task<IActionResult> deleteChat(string chatId, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(chatId, out long numeric_id))
             return BadRequest("Invalid chat ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        if (!long.TryParse(id_current_user, out long currentUser))
+            return BadRequest("Invalid user ID");
+        
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -479,22 +517,22 @@ public class MessageController : ControllerBase
             if (check != activeUser.encodedToken)
                 return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
 
-            try
-            {
-                ChatDto chat = await database.chats.FirstOrDefaultAsync(record =>
-                    record.chat_id == numeric_id && record.member_id == currentUser);
-                database.chats.Remove(chat); // on delete, cascade for messages table
-                return NoContent();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Internal Server Error.");
-            }
-
         }
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
+        }*/
+        
+        try
+        {
+            ChatDto chat = await database.chats.FirstOrDefaultAsync(record =>
+                record.chat_id == numeric_id && record.member_id == currentUser);
+            database.chats.Remove(chat); // on delete, cascade for messages table
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error.");
         }
     }
 }

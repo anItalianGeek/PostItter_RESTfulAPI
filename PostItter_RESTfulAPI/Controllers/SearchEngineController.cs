@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
@@ -159,7 +160,8 @@ public class SearchEngineController : ControllerBase
                     await database.users.FirstOrDefaultAsync(record => record.user_id == postDto.user_id);
                 List<CommentDto> comments =
                     await database.comments.Where(record => record.post == postDto.post_id).ToListAsync();
-                posts.Add(new Post
+
+                Post toAdd = new Post
                 {
                     body = postDto.body,
                     id = postDto.post_id.ToString(),
@@ -177,7 +179,10 @@ public class SearchEngineController : ControllerBase
                         username = postingUser.username,
                         displayName = postingUser.displayname
                     }
-                });
+                };
+                
+                if (posts.FirstOrDefault(e => e.id == toAdd.id) == null)
+                    posts.Add(toAdd);
             }
 
             return Ok(posts);

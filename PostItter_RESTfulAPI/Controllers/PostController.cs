@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
@@ -35,12 +36,12 @@ public class PostController : ControllerBase
         {
             List<Post> list = new List<Post>();
             List<PostDto> postDtos = await database.posts.ToListAsync();
-            List<BlockedUserDTO> blockedUsers = await database.blockedUsers.Where(record => record.user == id).ToListAsync();
+            List<BlockedUserDTO> blockedUsers = await database.blockedUsers.Where(record => record.user == id || record.blocked_user == id).ToListAsync();
             foreach (PostDto element in postDtos)
             {
                 bool skipPost = false;
                 foreach (BlockedUserDTO blockedUser in blockedUsers)
-                    if (blockedUser.blocked_user == element.user_id)
+                    if (blockedUser.blocked_user == element.user_id || (id == blockedUser.blocked_user && blockedUser.user == element.user_id))
                     {
                         skipPost = true;
                         break;
@@ -52,6 +53,8 @@ public class PostController : ControllerBase
                 UserDto user = await database.users.FirstOrDefaultAsync(record => record.user_id == element.user_id);
                 if (user == null)
                     return NotFound("A post was requested but the user doesn't exist.");
+
+                List<CommentDto> commentDtos = await database.comments.Where(record => record.post == element.post_id).ToListAsync();
                 list.Add(new Post
                 {
                     id = element.post_id.ToString(),
@@ -67,11 +70,11 @@ public class PostController : ControllerBase
                         profilePicture = user.profilePicture
                     },
                     hashtags = await database.hashtags.Where(record => record.post_ref == element.post_id).Select(e => e.content).ToArrayAsync(),
-                    comments = [],
+                    comments = new Comment[commentDtos.Count],
                     color = element.color
                 });
             }
-
+            
             return Ok(list);
         }
         catch (Exception e )
@@ -363,7 +366,7 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> addNewPost([FromBody] Post post)
     {
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -389,7 +392,7 @@ public class PostController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         PostDto postDto = new PostDto
         {
@@ -397,7 +400,7 @@ public class PostController : ControllerBase
             likes = 0,
             reposts = 0,
             shares = 0,
-            post_ref = 0, // TODO must implement reposting!!!!
+            post_ref = 0, // TODO must implement reposting
             user_id = Convert.ToInt64(post.user.id),
             color = post.color
         };
@@ -423,21 +426,22 @@ public class PostController : ControllerBase
                     post_ref = postDto.post_id
                 });
             }
-            catch (Exception)
+            catch (Exception e )
             {
-                return StatusCode(500, "Internal Server Error");
+                return StatusCode(500, $"Internal Server Error. {e.Message}");
             }
         }
 
         try
         {
             await database.SaveChangesAsync();
+            post.id = postDto.post_id.ToString();
             return
-                Created(); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
+                Created("", post); // comments aren't needed, how can a post have comments before it has been created?? hashtags are fine like this btw
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            return StatusCode(500, "Internal Server Error.");
+            return StatusCode(500, $"Internal Server Error. {e.Message}");
         }
     }
 
@@ -449,12 +453,15 @@ public class PostController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> updatePost(string id,[FromQuery] string action, [FromBody] Comment? comment)
+    public async Task<IActionResult> updatePost(string id, [FromQuery] string action, [FromQuery] string id_retrieving_user, [FromBody] Comment? comment)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        if (!long.TryParse(id_retrieving_user, out long currentUser))
+            return BadRequest("Invalid current user ID");
+        
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -480,7 +487,7 @@ public class PostController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        } */
         
         PostDto postDto = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
         
@@ -489,37 +496,88 @@ public class PostController : ControllerBase
         switch (action)
         {
             case "add-like":
+                if (await database.likes.FirstOrDefaultAsync(record =>
+                        record.user == currentUser && record.post == postDto.post_id) != null)
+                    return NoContent();
+                
                 postDto.likes++;
+                LikeDto newLike = new LikeDto
+                {
+                    post = postDto.post_id,
+                    user = currentUser
+                };
+
+                try
+                {
+                    await database.likes.AddAsync(newLike);
+                    await database.SaveChangesAsync();
+                    return Created();
+                }
+                catch (Exception)
+                {
+                    return StatusCode(500, "Internal Server Error");
+                }
                 break;
             
             case "remove-like":
+                LikeDto like = await database.likes.FirstOrDefaultAsync(record => record.user == currentUser && record.post == postDto.post_id); 
+                if (like == null)
+                    return NoContent();
+                
                 postDto.likes--;
+
+                try
+                {
+                    database.likes.Remove(like);
+                    await database.SaveChangesAsync();
+                    return NoContent();
+                }
+                catch (Exception)
+                {
+                    return StatusCode(500, "Internal Server Error");
+                }
                 break;
             
             case "add-comment":
                 if (comment is null)
                     return BadRequest("Missing Comment, cannot proceed with operation.");
-                
+            
                 CommentDto newComment = new CommentDto
                 {
                     content = comment.content,
                     post = numeric_id,
                     user = Convert.ToInt64(comment.user.id)
                 };
-                await database.comments.AddAsync(newComment);
+                try
+                {
+                    await database.comments.AddAsync(newComment);
+                    await database.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    return StatusCode(500, "Internal Server Error.");
+                }
                 return Created();
-            
+        
             case "remove-comment":
                 if (comment is null)
                     return BadRequest("Missing Comment, cannot proceed with operation.");
-                
+            
                 CommentDto commentDto = database.comments.FirstOrDefault(record => 
                     record.content == comment.content && record.post == numeric_id && record.user == Convert.ToInt64(comment.user.id)
                 );
-                
+            
                 if (comment == null) return NotFound("Comment Does Not Exist.");
-                
-                database.comments.Remove(commentDto);
+            
+                try
+                {
+                    database.comments.Remove(commentDto);
+                    await database.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    return StatusCode(500, "Internal Server Error.");
+                }
                 return NoContent();
             
             case "repost":
@@ -529,6 +587,9 @@ public class PostController : ControllerBase
             case "share":
                 postDto.shares++;
                 break;
+            
+            default:
+                return BadRequest("Invalid action specified.");
         }
 
         try
@@ -554,7 +615,7 @@ public class PostController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -580,7 +641,7 @@ public class PostController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         PostDto postToDelete = await database.posts.FirstOrDefaultAsync(record => record.post_id == numeric_id);
 

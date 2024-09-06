@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,17 @@ public class UserController : ControllerBase
         database = _database;
     }
 
+    [HttpGet("darkmodeStatus")]
+    public async Task<IActionResult> GetDarkModeStatus([FromQuery] string user)
+    {
+        long id = long.Parse(user);
+        UserSettingsDto settings = await database.settings.FirstOrDefaultAsync(record => record.user == id);
+        if (settings == null)
+            return NotFound("Database is lacking settings for the requested user.");
+        else
+            return Ok(settings.darkMode);
+    }
+    
     [HttpGet("{id}")]
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -36,7 +48,7 @@ public class UserController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -62,17 +74,13 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         if (await database.blockedUsers.FirstOrDefaultAsync(record => record.user == id_currentUser && record.blocked_user == numeric_id) != null)
             return StatusCode(406, "Request Not Acceptable. Requested User is Blocked.");
         
         if (await database.blockedUsers.FirstOrDefaultAsync(record => record.blocked_user == id_currentUser && record.user == numeric_id) != null)
             return StatusCode(406, "Request Not Acceptable. The requested user has blocked you.");
-
-        BlockedUserDTO isUserBlocked = await database.blockedUsers.FirstOrDefaultAsync(record => record.user == id_currentUser && record.blocked_user == numeric_id);
-        if (isUserBlocked != null)
-            return StatusCode(406, "Cannot view a Blocked User.");
         
         UserDto searchedUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         UserSettingsDto userSettings = await database.settings.FirstOrDefaultAsync(record => record.user == searchedUser.user_id);
@@ -120,6 +128,7 @@ public class UserController : ControllerBase
             returnedUser.notifications = new Notification[notifications.Length];
             for (int i = 0; i < notifications.Length; i++)
             {
+                returnedUser.notifications[i] = new Notification();
                 returnedUser.notifications[i].id = notifications[i].notification_id.ToString();
                 returnedUser.notifications[i].type = notifications[i].type;
                 returnedUser.notifications[i].message = notifications[i].content;
@@ -157,8 +166,8 @@ public class UserController : ControllerBase
         returnedUser.following = new User[_following.Count];
         returnedUser.followers = new User[_followers.Count];
         
-        if (!userSettings.privateProfile || userSettings.privateProfile &&
-            _followers.FirstOrDefault(e => e.following_user == id_currentUser) != null)
+        if ((!userSettings.privateProfile || userSettings.privateProfile &&
+            _followers.FirstOrDefault(e => e.following_user == id_currentUser) != null) || id_currentUser == numeric_id)
         {
             for (int i = 0; i < _following.Count; i++)
             {
@@ -226,25 +235,22 @@ public class UserController : ControllerBase
                     profilePicture = searchedUser.profilePicture
                 };
 
-                if (await database.likes.FirstOrDefaultAsync(record =>
-                        record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
+                if (await database.likes.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
                     likedPosts.Add(posts[i]);
-                if (await database.comments.FirstOrDefaultAsync(record =>
-                        record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
+                if (await database.comments.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
                     commentedPosts.Add(posts[i]);
             }
-
-            returnedUser.posts = posts;
+            
             returnedUser.likedPosts = likedPosts.ToArray();
             returnedUser.commentedPosts = commentedPosts.ToArray();
         }
         else
         {
-            returnedUser.posts = [];
             returnedUser.likedPosts = [];
             returnedUser.commentedPosts = [];
         }
-
+        
+        returnedUser.posts = posts;
         return Ok(returnedUser);
     }
 
@@ -263,7 +269,7 @@ public class UserController : ControllerBase
             return NotFound("User Does Not Exist.");
 
         UserSettingsDto searchedUserSettings;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -295,7 +301,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
 
         if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
             return NotFound("User Does Not Exist.");
@@ -341,7 +347,7 @@ public class UserController : ControllerBase
             return NotFound("User Does Not Exist.");
         
         UserSettingsDto searchedUserSettings;
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -373,7 +379,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
             return NotFound("User Does Not Exist.");
@@ -410,9 +416,12 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> updatePassword([FromBody] string newPassword)
+    public async Task<IActionResult> updatePassword([FromBody] string newPassword, [FromQuery] string id_retrieving_user)
     {
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        if (!long.TryParse(id_retrieving_user, out long numeric_id))
+            return BadRequest("Invalid user ID");
+        
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -434,22 +443,23 @@ public class UserController : ControllerBase
             
             if (check != activeUser.encodedToken)
                 return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
-
-            try
-            {
-                (await database.users.FirstOrDefaultAsync(record => record.user_id == currentUser))
-                    .password = newPassword;
-                await database.SaveChangesAsync();
-                return Ok("Password updated.");
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Internal Server Error.");
-            }
+                
         }
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
+        }*/
+        
+        try
+        {
+            (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id))
+                .password = newPassword;
+            await database.SaveChangesAsync();
+            return Ok("Password updated.");
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error.");
         }
     }
     
@@ -460,12 +470,12 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> updateExistingUser(string id,[FromBody] User newData)
+    public async Task<IActionResult> updateExistingUser(string id, [FromBody] User newData)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -494,7 +504,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         UserDto userToUpdate = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         UserSettingsDto userSettings = await database.settings.FirstOrDefaultAsync(record => record.user == userToUpdate.user_id);
@@ -523,7 +533,6 @@ public class UserController : ControllerBase
             userSettings.darkMode = (bool) newData.darkMode;
         if (newData.twoFA != userSettings.twoFA)
         {
-            userSettings.twoFA = (bool)newData.twoFA;
             twoFaChanged = true;
         }
 
@@ -542,12 +551,16 @@ public class UserController : ControllerBase
         {
             await database.SaveChangesAsync();
             if (twoFaChanged)
-                if (userSettings.twoFA)
-                    return RedirectPreserveMethod("http://localhost:5265/api/2fa/activate");
-                    //return StatusCode(307, new { Location = "http://localhost:5265/api/2fa/activate" });
+                if ((bool)newData.twoFA)
+                {
+                    Response.Headers.Location = $"http://localhost:5265/api/2fa/activate?id_active_user={numeric_id}";
+                    return StatusCode(307);
+                }
                 else
-                    return RedirectPreserveMethod("http://localhost:5265/api/2fa/deactivate");
-                    //return StatusCode(307, new { Location = "http://localhost:5265/api/2fa/deactivate" });
+                {
+                    Response.Headers.Location = $"http://localhost:5265/api/2fa/deactivate?id_active_user={numeric_id}";
+                    return StatusCode(307);
+                }
             else
                 return Accepted();
         }
@@ -557,18 +570,18 @@ public class UserController : ControllerBase
         }
     }
 
-    [HttpPost("{id}/block")]
+    [HttpPost("{id}/block/{userToBlock}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> blockUser(string id, [FromBody] string userToBlock)
+    public async Task<IActionResult> blockUser(string id, string userToBlock)
     {
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToBlock, out long numeric_id_userToBlock))
             return BadRequest("Invalid user ID.");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -593,32 +606,43 @@ public class UserController : ControllerBase
             
             if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToBlock) == null)
                 return NotFound();
-
-            BlockedUserDTO blockedUserDto = new BlockedUserDTO
-            {
-                blocked_user = numeric_id_userToBlock,
-                user = numeric_id
-            };
-
-            try
-            {
-                await database.blockedUsers.AddAsync(blockedUserDto);
-            
-                UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == numeric_id_userToBlock && record.user == numeric_id);
-                if (connection != null)
-                    database.connections.Remove(connection);
-
-                await database.SaveChangesAsync();
-                return Ok();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Internal Server Error");
-            }
         }
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
+        }*/
+        
+        BlockedUserDTO blockedUserDto = new BlockedUserDTO
+        {
+            blocked_user = numeric_id_userToBlock,
+            user = numeric_id
+        };
+
+        try
+        {
+            await database.blockedUsers.AddAsync(blockedUserDto);
+            
+            UserConnectionDto connection = await database.connections.FirstOrDefaultAsync(record => record.following_user == numeric_id_userToBlock && record.user == numeric_id);
+            if (connection != null)
+                database.connections.Remove(connection);
+
+            var userChats = database.chats.Where(record => record.member_id == numeric_id).Select(e => e.chat_id).Distinct();
+            List<ChatDto> chatsToDelete = new List<ChatDto>();
+            foreach (long chatId in userChats)
+            {
+                ChatDto chat = await database.chats.FirstOrDefaultAsync(record => record.chat_id == chatId);
+                if (chat.member_id == numeric_id_userToBlock)
+                    chatsToDelete.Add(chat);
+            }
+                
+            database.RemoveRange(chatsToDelete);
+                
+            await database.SaveChangesAsync();
+            return Ok();
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal Server Error");
         }
     }
 
@@ -632,7 +656,7 @@ public class UserController : ControllerBase
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(followerId, out long follower_numeric_id))
             return BadRequest("Invalid user ID.");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -654,7 +678,15 @@ public class UserController : ControllerBase
             
             if (check != activeUser.encodedToken)
                 return StatusCode(401, "Cannot perform action, Authorization Token might be corrupted.");
-
+                
+        }
+        else
+        {
+            return StatusCode(401, "Missing Authorization Token.");
+        }*/
+        
+        try
+        {
             UserSettingsDto requestedUserSettings = await database.settings.FirstOrDefaultAsync(record => record.user == follower_numeric_id);
             if (requestedUserSettings == null)
                 return BadRequest("Cannot perform action, The user doesn't exist or the database is missing it's settings.");
@@ -668,14 +700,7 @@ public class UserController : ControllerBase
                              record.user_sender == numeric_id) == null)
                     return BadRequest("Follow request confirmation didn't match to the user.");
             }
-        }
-        else
-        {
-            return StatusCode(401, "Missing Authorization Token.");
-        }
-        
-        try
-        {
+            
             await database.connections.AddAsync(new UserConnectionDto
             {
                 user = numeric_id,
@@ -701,7 +726,7 @@ public class UserController : ControllerBase
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(followerId, out long follower_numeric_id))
             return BadRequest("Invalid user ID.");
 
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -727,7 +752,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         try
         {
@@ -746,18 +771,18 @@ public class UserController : ControllerBase
         }
     }
     
-    [HttpPost("{id}/unblock")]
+    [HttpPost("{id}/unblock/{userToUnblock}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> unblockUser(string id, [FromBody] string userToUnblock)
+    public async Task<IActionResult> unblockUser(string id, string userToUnblock)
     {
         if (!long.TryParse(id, out long numeric_id) || !long.TryParse(userToUnblock, out long numeric_id_userToUnblock))
             return BadRequest("Invalid user ID.");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -783,7 +808,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id_userToUnblock) == null)
             return NotFound();
@@ -813,7 +838,7 @@ public class UserController : ControllerBase
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -839,7 +864,7 @@ public class UserController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
 
         try
         {

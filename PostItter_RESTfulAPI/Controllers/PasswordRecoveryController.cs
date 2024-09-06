@@ -3,6 +3,7 @@ using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using System.Net;
 using System.Net.Mail;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;

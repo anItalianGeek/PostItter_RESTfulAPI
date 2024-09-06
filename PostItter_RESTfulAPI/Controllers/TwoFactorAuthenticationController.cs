@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
 using PostItter_RESTfulAPI.Models.DatabaseModels;
 using Google.Authenticator;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Primitives;
 using PostItter_RESTfulAPI.Models;
 
@@ -31,7 +32,7 @@ public class TwoFactorAuthenticationController : ControllerBase
             return BadRequest("Authenticator code has not been provided.");
         
         UserDto user = await database.users.FirstOrDefaultAsync(record => record.email == email_active_user);
-
+        
         TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
         if (tfa.ValidateTwoFactorPIN(user.secureKey2fa, code))
         {
@@ -80,18 +81,18 @@ public class TwoFactorAuthenticationController : ControllerBase
         }
     }
 
-    [HttpPost("activate")]
+    [HttpPut("activate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> activate2fa([FromQuery] string id_active_user, [FromBody] string email)
+    public async Task<IActionResult> activate2fa([FromQuery] string id_active_user)
     {
         if (!long.TryParse(id_active_user, out long numeric_id))
             return BadRequest("Invalid User ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -120,7 +121,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         UserDto currentUser = await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id);
         if (currentUser == null)
@@ -138,7 +139,7 @@ public class TwoFactorAuthenticationController : ControllerBase
             string key = GenerateRandomKey(10);
             currentUser.secureKey2fa = key;
             TwoFactorAuthenticator tfa = new TwoFactorAuthenticator();
-            SetupCode setupInfo = tfa.GenerateSetupCode("PostItter TOTP Generator", email, key, false, 3);
+            SetupCode setupInfo = tfa.GenerateSetupCode("PostItter TOTP Generator", currentUser.email, key, false, 3);
             
             string qrCodeImageBase64 = setupInfo.QrCodeSetupImageUrl.Split(',')[1];
 
@@ -156,7 +157,15 @@ public class TwoFactorAuthenticationController : ControllerBase
                             </html>";
 
             settings.twoFA = true;
-            return Content(html, "text/html");
+            try
+            {
+                await database.SaveChangesAsync();
+                return Ok(new {content = html});
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, $"Internal Server Error. {e.Message}");
+            }
         }
         else
         {
@@ -174,7 +183,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         }
     }
 
-    [HttpPost("deactivate")]
+    [HttpPut("deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -184,7 +193,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         if (!long.TryParse(id_active_user, out long id))
             return BadRequest("Invalid User ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -213,7 +222,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
         
         UserSettingsDto userSettings = await database.settings.FirstOrDefaultAsync(record => record.user == id);
         if (userSettings == null)
@@ -241,7 +250,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         if (!long.TryParse(id_active_user, out long id))
             return BadRequest("Invalid User ID");
         
-        if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
+        /*if (Request.Headers.TryGetValue("Authorization", out StringValues authHeader))
         {
             string token = authHeader.ToString().Replace("Bearer ", "");
             JwtWebToken jwtWebToken = JsonSerializer.Deserialize<JwtWebToken>(token);
@@ -270,7 +279,7 @@ public class TwoFactorAuthenticationController : ControllerBase
         else
         {
             return StatusCode(401, "Missing Authorization Token.");
-        }
+        }*/
 
         UserDto user = await database.users.FirstOrDefaultAsync(record => record.user_id == id);
         UserSettingsDto settings = await database.settings.FirstOrDefaultAsync(record => record.user == id);
