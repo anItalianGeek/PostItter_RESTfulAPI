@@ -1,4 +1,4 @@
-namespace PostItter_RESTfulAPI.Models;
+namespace PostItter_RESTfulAPI.Entity;
 
 public class Notification
 {

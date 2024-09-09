@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 
@@ -166,6 +166,8 @@ public class LoginController : ControllerBase
                 secureKey2fa = ""
             });
             
+            await database.SaveChangesAsync();
+            
             await database.settings.AddAsync(new UserSettingsDto
             {
                 twoFA = false,
@@ -177,8 +179,10 @@ public class LoginController : ControllerBase
                 messageNotification = true,
                 privateProfile = false,
                 replyNotification = true,
-                user = (await database.users.FirstOrDefaultAsync(record => record.email == input.email && record.password == Hasher.HashPassword(input.password))).user_id,
+                user = (await database.users.FirstOrDefaultAsync(record => record.email == input.email)).user_id,
             });
+            
+            await database.SaveChangesAsync();
         }
         catch (Exception e)
         {

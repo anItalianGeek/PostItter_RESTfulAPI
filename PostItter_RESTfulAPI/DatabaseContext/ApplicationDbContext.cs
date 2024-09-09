@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.DatabaseContext;
 

@@ -1,8 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
-namespace PostItter_RESTfulAPI.Models.DatabaseModels;
+namespace PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 public class UserDto
 {

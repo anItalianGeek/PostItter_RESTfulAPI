@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
-using PostItter_RESTfulAPI.Models;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 
@@ -148,6 +148,14 @@ public class NotificationController : ControllerBase
                 long chatId = Convert.ToInt64(notif.postId); // here i can use postId to understand the context of the chat
                 if ((await database.chats.FirstOrDefaultAsync(record =>
                         record.member_id == currentUser && record.chat_id == chatId)) == null)
+                    return Unauthorized();
+                break;
+            case "request-follow":
+                notif.message = "requested to follow you.";
+
+                if (await database.notifications.FirstOrDefaultAsync(record =>
+                        record.type == notif.type && record.user_receiver == Convert.ToInt64(destination) &&
+                        record.user_sender == Convert.ToInt64(notif.user.id)) != null)
                     return Unauthorized();
                 break;
             case "new-follow":

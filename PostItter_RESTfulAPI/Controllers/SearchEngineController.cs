@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 

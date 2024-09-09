@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 

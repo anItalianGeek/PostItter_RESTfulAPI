@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
-using PostItter_RESTfulAPI.Models;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 
@@ -115,8 +115,6 @@ public class UserController : ControllerBase
             
             returnedUser.email = searchedUser.email;
             returnedUser.darkMode = userSettings.darkMode;
-            returnedUser.everyoneCanText = userSettings.everyoneCanText;
-            returnedUser.privateProfile = userSettings.privateProfile;
             returnedUser.twoFA = userSettings.twoFA;
             returnedUser.likeNotification = userSettings.likeNotification;
             returnedUser.commentNotification = userSettings.commentNotification;
@@ -149,8 +147,6 @@ public class UserController : ControllerBase
             returnedUser.notifications = [];
             returnedUser.email = null;
             returnedUser.darkMode = null;
-            returnedUser.everyoneCanText = null;
-            returnedUser.privateProfile = null;
             returnedUser.twoFA = null;
             returnedUser.likeNotification = null;
             returnedUser.commentNotification = null;
@@ -159,9 +155,15 @@ public class UserController : ControllerBase
             returnedUser.messageNotification = null;
         }
         
+        returnedUser.everyoneCanText = userSettings.everyoneCanText;
+        returnedUser.privateProfile = userSettings.privateProfile;
+        
         List<UserConnectionDto> _following = await database.connections.Where(record => record.user == searchedUser.user_id).ToListAsync();
         List<UserConnectionDto> _followers = await database.connections.Where(record => record.following_user == searchedUser.user_id).ToListAsync();
-        List<PostDto> dbPosts = await database.posts.Where(post => post.user_id == numeric_id).ToListAsync();
+        List<PostDto> dbPosts = await database.posts.Where(post => post.user_id == searchedUser.user_id).ToListAsync();
+        List<long> likedPostsIds = await database.likes.Where(like => like.user == searchedUser.user_id).Select(e => e.post).ToListAsync();
+        List<long> commentedPostsIds = await database.comments.Where(comment => comment.user == searchedUser.user_id).Select(e => e.post).Distinct().ToListAsync();
+        
         Post[] posts = new Post[dbPosts.Count];
         returnedUser.following = new User[_following.Count];
         returnedUser.followers = new User[_followers.Count];
@@ -185,7 +187,7 @@ public class UserController : ControllerBase
             for (int i = 0; i < _followers.Count; i++)
             {
                 UserDto interestedUser =
-                    await database.users.FirstOrDefaultAsync(record => record.user_id == _followers[i].following_user);
+                    await database.users.FirstOrDefaultAsync(record => record.user_id == _followers[i].user);
                 returnedUser.followers[i] = new User
                 {
                     id = interestedUser.user_id.ToString(),
@@ -194,9 +196,6 @@ public class UserController : ControllerBase
                     username = interestedUser.username
                 };
             }
-
-            List<Post> commentedPosts = new List<Post>();
-            List<Post> likedPosts = new List<Post>();
             
             for (int i = 0; i < dbPosts.Count; i++)
             {
@@ -234,11 +233,56 @@ public class UserController : ControllerBase
                     username = searchedUser.username,
                     profilePicture = searchedUser.profilePicture
                 };
+            }
+            
+            List<Post> commentedPosts = new List<Post>();
+            List<Post> likedPosts = new List<Post>();
+            foreach (long postId in likedPostsIds)
+            {
+                PostDto post = await database.posts.FirstOrDefaultAsync(record => record.post_id == postId);
+                UserDto postingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == post.user_id);
+                likedPosts.Add(new Post
+                {
+                    id = post.post_id.ToString(),
+                    body = post.body,
+                    color = post.color,
+                    comments = [],
+                    hashtags = await database.hashtags.Where(record => record.post_ref == post.post_id).Select(e => e.content).ToArrayAsync(),
+                    likes = post.likes,
+                    reposts = post.reposts,
+                    shares = post.shares,
+                    user = new User
+                    {
+                        id = postingUser.user_id.ToString(),
+                        displayName = postingUser.displayname,
+                        username = postingUser.username,
+                        profilePicture = postingUser.profilePicture
+                    }
+                });
+            }
 
-                if (await database.likes.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
-                    likedPosts.Add(posts[i]);
-                if (await database.comments.FirstOrDefaultAsync(record => record.user == searchedUser.user_id && record.post == dbPosts[i].post_id) != null)
-                    commentedPosts.Add(posts[i]);
+            foreach (long postId in commentedPostsIds)
+            {
+                PostDto post = await database.posts.FirstOrDefaultAsync(record => record.post_id == postId);
+                UserDto postingUser = await database.users.FirstOrDefaultAsync(record => record.user_id == post.user_id);
+                commentedPosts.Add(new Post
+                {
+                    id = post.post_id.ToString(),
+                    body = post.body,
+                    color = post.color,
+                    comments = [],
+                    hashtags = await database.hashtags.Where(record => record.post_ref == post.post_id).Select(e => e.content).ToArrayAsync(),
+                    likes = post.likes,
+                    reposts = post.reposts,
+                    shares = post.shares,
+                    user = new User
+                    {
+                        id = postingUser.user_id.ToString(),
+                        displayName = postingUser.displayname,
+                        username = postingUser.username,
+                        profilePicture = postingUser.profilePicture
+                    }
+                });
             }
             
             returnedUser.likedPosts = likedPosts.ToArray();
@@ -303,8 +347,6 @@ public class UserController : ControllerBase
             return StatusCode(401, "Missing Authorization Token.");
         }*/
 
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
-            return NotFound("User Does Not Exist.");
         if ((searchedUserSettings = await database.settings.FirstOrDefaultAsync(record => record.user == numeric_id)) == null)
             return StatusCode(500, "Server is missing settings for this user.");
 
@@ -381,8 +423,6 @@ public class UserController : ControllerBase
             return StatusCode(401, "Missing Authorization Token.");
         }*/
         
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
-            return NotFound("User Does Not Exist.");
         if ((searchedUserSettings = await database.settings.FirstOrDefaultAsync(record => record.user == numeric_id)) == null)
             return StatusCode(500, "Server is missing settings for this user.");
 
@@ -391,7 +431,7 @@ public class UserController : ControllerBase
         User[] following = new User[connections.Length];
         for (int i = 0; i < connections.Length; i++)
         {
-            UserDto current = await database.users.FirstOrDefaultAsync(record => record.user_id == connections[i].user);
+            UserDto current = await database.users.FirstOrDefaultAsync(record => record.user_id == connections[i].following_user);
             following[i] = new User
             {
                 id = current.user_id.ToString(),

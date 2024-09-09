@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace PostItter_RESTfulAPI.Models.DatabaseModels;
+namespace PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 public class ActiveUsersDto
 {

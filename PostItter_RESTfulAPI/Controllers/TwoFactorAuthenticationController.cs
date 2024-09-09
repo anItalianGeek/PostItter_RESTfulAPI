@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
 using Google.Authenticator;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Primitives;
-using PostItter_RESTfulAPI.Models;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 
@@ -24,7 +24,9 @@ public class TwoFactorAuthenticationController : ControllerBase
     }
 
     [HttpPost("authenticate")]
-    public async Task<IActionResult> authenticate([FromQuery] string email_active_user, [FromBody] string code)
+    [Produces("application/json")]
+    /** OK OK I KNOW I CAN'T PASS CODES LIKE THIS WITH PARAMETERS BUT WHEN I USE [FromBody] I KEEP GETTING "Unsupported media type" BUT ONLY FOR THIS ENDPOINT */
+    public async Task<IActionResult> authenticate([FromQuery] string email_active_user, [FromQuery] string code) 
     {
         if (email_active_user.IsNullOrEmpty())
             return BadRequest("Identifier has not been provided.");

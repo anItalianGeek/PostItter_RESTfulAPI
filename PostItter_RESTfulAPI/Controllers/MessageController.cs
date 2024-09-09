@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using PostItter_RESTfulAPI.DatabaseContext;
-using PostItter_RESTfulAPI.Models;
-using PostItter_RESTfulAPI.Models.DatabaseModels;
+using PostItter_RESTfulAPI.Entity;
+using PostItter_RESTfulAPI.Entity.DatabaseModels;
 
 namespace PostItter_RESTfulAPI.Controllers;
 
@@ -63,17 +63,19 @@ public class MessageController : ControllerBase
         
         try
         {
+            // Raggruppa le chat per chat_id
             var chatGroups = await database.chats
                 .Where(chat => chat.member_id == numeric_id)
-                .GroupBy(chat => new { chat.chat_id, chat.chat_name })
+                .GroupBy(chat => chat.chat_id)
                 .ToListAsync();
-
+            
             var returnedChats = new List<Chat>();
 
             foreach (var group in chatGroups)
             {
-                var members = await database.chats
-                    .Where(c => c.chat_id == group.Key.chat_id)
+                // Ottieni i membri della chat corrente
+                List<User> members = await database.chats
+                    .Where(c => c.chat_id == group.Key)
                     .Join(
                         database.users,
                         chat => chat.member_id,
@@ -88,29 +90,54 @@ public class MessageController : ControllerBase
                     )
                     .ToListAsync();
 
-                MessageDto lastMessage = await database.messages.Where(record => record.sender_id == currentUser)
-                    .OrderBy(e => e.sent_at).FirstOrDefaultAsync();
-                returnedChats.Add(new Chat
+                if (members.Count == 0)
+                    continue;
+
+                // Ottieni l'ultimo messaggio della chat corrente
+                MessageDto lastMessage = await database.messages
+                    .Where(record => record.chat_ref == group.Key) // Assumi che ci sia un campo chat_id nei messaggi
+                    .OrderByDescending(e => e.sent_at)
+                    .FirstOrDefaultAsync();
+
+                if (lastMessage != null)
                 {
-                    chatId = group.Key.chat_id.ToString(),
-                    chatName = group.Key.chat_name,
-                    members = members,
-                    lastMessage = new Message
+                    var sender = members.FirstOrDefault(e => e.id == lastMessage.sender_id.ToString());
+                    if (sender == null)
+                        continue;
+
+                    returnedChats.Add(new Chat
                     {
-                        content = lastMessage.content,
-                        file_url = lastMessage.file_url,
-                        sender_username = members.FirstOrDefault(e => e.id == lastMessage.sender_id.ToString()).username,
-                        sent_at = lastMessage.sent_at,
-                    }
-                });
+                        chatId = group.Key.ToString(),
+                        chatName = group.FirstOrDefault()
+                            .chat_name, // Assumi che tutte le chat con lo stesso ID abbiano lo stesso nome
+                        members = members,
+                        lastMessage = new Message
+                        {
+                            content = lastMessage.content,
+                            file_url = lastMessage.file_url,
+                            sender_username = sender.username,
+                            sent_at = lastMessage.sent_at,
+                        }
+                    });
+                }
+                else
+                {
+                    returnedChats.Add(new Chat
+                    {
+                        chatId = group.Key.ToString(),
+                        chatName = group.FirstOrDefault()
+                            .chat_name, // Assumi che tutte le chat con lo stesso ID abbiano lo stesso nome
+                        members = members,
+                        lastMessage = null
+                    });
+                }
             }
 
             return Ok(returnedChats);
-
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            return StatusCode(500, "Internal Server Error.");
+            return StatusCode(500, $"Internal Server Error. {(e.InnerException == null ? e.Message : e.InnerException.Message)}");
         }
     }
 
@@ -360,7 +387,7 @@ public class MessageController : ControllerBase
 
             ChatDto newChatSelf = new ChatDto
             {
-                chat_id = chatIds.Count == 0 ? 0 : chatIds[chatIds.Count - 1],
+                chat_id = chatIds.Count == 0 ? 0 : chatIds[chatIds.Count - 1] + 1,
                 chat_name = chatMember.username,
                 member_id = currentUser.user_id,
             };
@@ -369,7 +396,7 @@ public class MessageController : ControllerBase
             
             ChatDto newChat = new ChatDto
             {
-                chat_id = chatIds.Count == 0 ? 0 : chatIds[chatIds.Count - 1],
+                chat_id = chatIds.Count == 0 ? 0 : chatIds[chatIds.Count - 1] + 1,
                 chat_name = currentUser.username,
                 member_id = chatMember.user_id
             };
@@ -528,6 +555,8 @@ public class MessageController : ControllerBase
             ChatDto chat = await database.chats.FirstOrDefaultAsync(record =>
                 record.chat_id == numeric_id && record.member_id == currentUser);
             database.chats.Remove(chat); // on delete, cascade for messages table
+            
+            await database.SaveChangesAsync();
             return NoContent();
         }
         catch (Exception)
