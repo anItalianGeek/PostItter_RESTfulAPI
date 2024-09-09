@@ -143,9 +143,9 @@ public class PasswordRecoveryController : ControllerBase
 
     private void SendPasswordResetEmail(string toEmail, string resetLink)
     {
-        var fromAddress = new MailAddress("ovasic@chilesotti.it", "PostItter Dev Team");
+        var fromAddress = new MailAddress("", "PostItter Dev Team"); // email removed for privacy reasons
         var toAddress = new MailAddress(toEmail);
-        const string fromPassword = "ognjenvasic10";
+        const string fromPassword = ""; //Password removed for privacy reasons
         const string subject = "PostItter Password Reset Request";
         string body = $"Dear User,\n" +
                       $"We have received recently a request from you to reset your password on your PostItter Account.\n" +
