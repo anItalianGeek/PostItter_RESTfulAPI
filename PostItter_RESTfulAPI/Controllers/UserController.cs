@@ -304,12 +304,14 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<User[]>> getFollowersFromUser(string id)
+    public async Task<ActionResult<User[]>> getFollowersFromUser(string id, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
+        if (!long.TryParse(id_current_user, out long currentUser))
+            return BadRequest("Invalid current user ID");
 
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
+        if (!await database.users.AnyAsync(record => record.user_id == numeric_id))
             return NotFound("User Does Not Exist.");
 
         UserSettingsDto searchedUserSettings;
@@ -369,7 +371,7 @@ public class UserController : ControllerBase
         }
 
 
-        if (!searchedUserSettings.privateProfile || searchedUserSettings.privateProfile && isCurrentUserBeingFollowed)
+        if (currentUser == searchedUserSettings.user || (!searchedUserSettings.privateProfile || searchedUserSettings.privateProfile && isCurrentUserBeingFollowed))
             return Ok(followers);
         else
             return Unauthorized("You do not have the permission to view this user's followers");
@@ -380,12 +382,14 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<User[]>> getFollowingFromUser(string id)
+    public async Task<ActionResult<User[]>> getFollowingFromUser(string id, [FromQuery] string id_current_user)
     {
         if (!long.TryParse(id, out long numeric_id))
             return BadRequest("Invalid user ID");
-
-        if (await database.users.FirstOrDefaultAsync(record => record.user_id == numeric_id) == null)
+        if (!long.TryParse(id_current_user, out long currentUser))
+            return BadRequest("Invalid current user ID");
+        
+        if (!await database.users.AnyAsync(record => record.user_id == numeric_id))
             return NotFound("User Does Not Exist.");
         
         UserSettingsDto searchedUserSettings;
@@ -441,9 +445,9 @@ public class UserController : ControllerBase
             };
         }
 
-        if (!searchedUserSettings.privateProfile || searchedUserSettings.privateProfile &&
-            (await database.connections.FirstOrDefaultAsync(record =>
-                record.following_user == searchedUserSettings.user && record.user == numeric_id)) != null)
+        if (currentUser == searchedUserSettings.user || (!searchedUserSettings.privateProfile || searchedUserSettings.privateProfile &&
+            !await database.connections.AnyAsync(record =>
+                record.following_user == searchedUserSettings.user && record.user == numeric_id)))
             return Ok(following);
         else
             return Unauthorized("You do not have the permission to view this user's followings");

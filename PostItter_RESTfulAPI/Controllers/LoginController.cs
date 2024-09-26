@@ -125,7 +125,7 @@ public class LoginController : ControllerBase
             }
             catch (Exception e)
             {
-                return StatusCode(500, e.Message);
+                return StatusCode(500, $"Internal Server Error. {(e.InnerException == null ? e.InnerException.Message : e.Message)}");
             }
 
             return Ok(newToken);
