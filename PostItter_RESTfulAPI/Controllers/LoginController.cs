@@ -26,24 +26,31 @@ public class LoginController : ControllerBase
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<bool>> checkAvailability([FromQuery] string name = "", [FromQuery] string email = "")
+    public async Task<ActionResult<bool[]>> checkAvailability([FromQuery] string name = "", [FromQuery] string email = "")
     {
-        bool[] values = new bool[2]{ false, false };
         try
         {
-            if (!name.IsNullOrEmpty() && await database.users.FirstOrDefaultAsync(record => record.username == name) == null)
-                values[0] = true;
-            if (!email.IsNullOrEmpty() && await database.users.FirstOrDefaultAsync(record => record.email == email) == null)
-                values[1] = true;
-
-            return Ok(values);
+            return Ok(await checkDataAvailability(name, email));
         }
         catch (Exception)
         {
             return StatusCode(500, "Internal Server Error");
         }
+        
     }
 
+    private async Task<bool[]> checkDataAvailability(string name, string email)
+    {
+        bool[] values = new bool[2]{ false, false };
+        
+        if (!name.IsNullOrEmpty() && await database.users.FirstOrDefaultAsync(record => record.username == name) == null)
+            values[0] = true;
+        if (!email.IsNullOrEmpty() && await database.users.FirstOrDefaultAsync(record => record.email == email) == null)
+            values[1] = true;
+
+        return values;
+    }
+    
     [HttpGet("2faCheck")]
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -88,7 +95,7 @@ public class LoginController : ControllerBase
         UserDto user = await database.users.FirstOrDefaultAsync(record => record.email == input.email && record.password == hashedPassword);
         UserSettingsDto settings = await database.settings.FirstOrDefaultAsync(record => record.user == user.user_id);
         
-        if (user == null) return NotFound("User Does Not Exist.");
+        if (user == null) return NotFound("User Does Not Exist Or Wrong Information Has Been Entered.");
         else if (settings == null) return NotFound("Server is missing settings for the desired user.");
         else if (settings.twoFA) return RedirectPreserveMethod($"http://localhost:5265/api/2fa/authenticate?id_active_user={user.user_id}");
         else
@@ -152,6 +159,10 @@ public class LoginController : ControllerBase
         
         if (await database.users.FirstOrDefaultAsync(record => record.email == input.email || record.password == input.password) != null)
             return StatusCode(406, "User Already Exists.");
+        
+        bool[] availabilityCheck = await checkDataAvailability(input.username, input.email);
+        if (!availabilityCheck[0] || !availabilityCheck[1])
+            return StatusCode(406, "Cannot create an account where entered data has been already taken.");
         
         try
         {

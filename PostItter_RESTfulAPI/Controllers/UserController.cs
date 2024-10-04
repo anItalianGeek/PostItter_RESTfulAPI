@@ -556,13 +556,20 @@ public class UserController : ControllerBase
         if (userToUpdate == null || userSettings == null)
             return NotFound("Requested User Does Not Exist.");
 
+        if (newData.username != userToUpdate.username)
+        {
+            bool availabilityCheck = await checkDataAvailability(newData.username);
+            if (!availabilityCheck)
+                return StatusCode(406, "Cannot update username because it has already been taken.");
+            
+            userToUpdate.username = newData.username;
+        }
+        
         bool twoFaChanged = false;
         if (newData.bio != userToUpdate.bio)
             userToUpdate.bio = newData.bio;
         if (newData.displayName != userToUpdate.displayname)
             userToUpdate.displayname = newData.displayName;
-        if (newData.username != userToUpdate.username)
-            userToUpdate.username = newData.username;
         if (newData.email != userToUpdate.email)
             userToUpdate.email = newData.email;
         if (newData.profilePicture != userToUpdate.profilePicture)
@@ -924,5 +931,15 @@ public class UserController : ControllerBase
         {
             return StatusCode(500, "Internal Server Error.");
         }
+    }
+    
+    private async Task<bool> checkDataAvailability(string name)
+    {
+        bool value = false;
+        
+        if (!name.IsNullOrEmpty() && await database.users.FirstOrDefaultAsync(record => record.username == name) == null)
+            value = true;
+
+        return value;
     }
 }
