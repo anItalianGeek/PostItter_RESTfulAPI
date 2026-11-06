@@ -2,12 +2,12 @@
 
 The Post-itter backend is a RESTful API developed in C# (.NET 8) that serves as the bridge between the frontend application and a MySQL database. It handles data retrieval, storage, modification, real-time communication via SignalR, and access control.
 
-> Backend for [PostItter](https://github.com/anItalianGeek/PostItter). Authentication uses
-> a signed bearer token carrying session data rather than a standard JWT. See the
-> postmortem in the frontend README for the CORS issue and the temporary authorization
-> bypass it caused.
+> **Personal project archive (2024).** Backend for [PostItter](https://github.com/anItalianGeek/PostItter),
+> built for a three-month personal challenge after my internship in Vienna. Kept for
+> reference, without active development or maintenance. It isn't production software.
 >
-> Built inside the three-month limit the challenge set. It isn't production software.
+> Authentication uses a signed bearer token carrying session data rather than a standard JWT.
+> See the postmortem in the frontend README for the CORS issue and the temporary authorization bypass it caused.
 
 ## Project Structure
 
