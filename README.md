@@ -1,64 +1,76 @@
 # Post-itter Backend
 
-The Post-itter backend is an API developed in C# that serves as the bridge between the frontend application and the MySQL database. It handles data retrieval, storage, modification, and access.
+The Post-itter backend is a RESTful API developed in C# (.NET 8) that serves as the bridge between the frontend application and a MySQL database. It handles data retrieval, storage, modification, real-time communication via SignalR, and access control.
 
 > Backend for [PostItter](https://github.com/anItalianGeek/PostItter). Authentication uses
 > a signed bearer token carrying session data rather than a standard JWT. See the
 > postmortem in the frontend README for the CORS issue and the temporary authorization
 > bypass it caused.
-> 
+>
 > Built inside the three-month limit the challenge set. It isn't production software.
 
 ## Project Structure
 
-The backend project is organized into the following main folders:
+The repository contains a solution file at the root and the main application project in a subdirectory:
 
-- **Controllers**: Contains the main code that manages the application's logic and handles requests.
-- **Entity and Database Models**: 
-  - **Entity**: Contains classes representing the application's data types.
-  - **Database Models**: Located within the Entity folder, this includes the models that map to the database tables.
-- **Migrations**: Manages database schema changes and updates.
-- **Application DB Context**: Defines the database context and configuration.
+- `PostItter_RESTfulAPI.sln`: Solution file.
+- `PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj`: Main ASP.NET Core project (`net8.0`).
+- **Controllers**: Contains API controllers handling endpoints for users, posts, messages, notifications, and auth (`api/users`, `api/posts`, `api/authguard`, etc.).
+- **Entity and Database Models**:
+  - `Entity/`: Domain entity models and custom token representations (`JwtWebToken`).
+  - `Entity/DatabaseModels/`: EF Core models mapped to database tables (e.g., `UserDto`, `PostDto`, `ActiveUsersDto`).
+- **DatabaseContext**: `ApplicationDbContext` defining EF Core database sets and relational mappings.
+- **Migrations**: EF Core code-first migrations (`20240830165210_Initial.cs`).
+- **Hubs / WebSockets**: SignalR hub (`ChatHub.cs`) and WebSocket handling for real-time messaging.
 
-## Setup and Configuration
+## Prerequisites
 
-### Prerequisites
+- **.NET SDK**: Version 8.0 (`net8.0`)
+- **MySQL / MariaDB**: Server instance running on localhost (default port 3306)
 
-- **.NET SDK**: Version 8.0 stable
+## Setup and Commands
 
-### Installation
-
-1. **Clone the Repository:**
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/anItalianGeek/PostItter_RESTfulAPI.git
+   cd PostItter_RESTfulAPI
    ```
 
-2. **Set Up the Backend:**
-   - Navigate to the backend directory.
-   - Open the `.sln` file in your preferred IDE (e.g., Visual Studio).
-   - Restore dependencies and run the application:
-     ```bash
-     dotnet restore
-     dotnet run
-     ```
+2. **Restore dependencies:**
+   ```bash
+   dotnet restore PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj
+   ```
 
-### Configuration
+3. **Build the project:**
+   ```bash
+   dotnet build PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj
+   ```
 
-- No specific environment variables are required.
-- Database configuration is handled within the API.
+4. **Run the API:**
+   ```bash
+   dotnet run --project PostItter_RESTfulAPI/PostItter_RESTfulAPI.csproj
+   ```
+   *(Alternatively, navigate directly to `cd PostItter_RESTfulAPI` and run `dotnet run`.)*
 
-## Usage
+### Runtime & Network Configuration
 
-- **Running the Backend**: Use an IDE capable of handling `.sln` files to start the backend. You can run or stop the backend service from your IDE.
+- **Kestrel Port**: The application configures Kestrel in `Program.cs` to listen on all network interfaces (`IPAddress.Any`) on port **5265** (`http://localhost:5265`).
+- **Swagger Documentation**: In the `Development` environment, Swagger UI is available at `http://localhost:5265/swagger`.
+- **CORS**: The default CORS policy is explicitly configured to allow origins from `http://localhost:4200` (the Angular frontend for PostItter) with credentials, any method, and any header.
 
-## Dependencies
+## Database Configuration & Schema Limitations
 
-- Dependencies are managed through NuGet and should be installed automatically when restoring the project.
+- **Configuration File**: Connection string settings are located in `PostItter_RESTfulAPI/appsettings.json` under `ConnectionStrings:DefaultConnection`.
+- **Requirements**: Requires a reachable MySQL server with an initialized database. Set your own `ConnectionStrings:DefaultConnection` in local ASP.NET Core configuration; the application reads it via `builder.Configuration.GetConnectionString("DefaultConnection")`. Do not reuse the credentials committed with the prototype.
+- **Schema & Migrations**: An initial migration (`20240830165210_Initial`) is present in `PostItter_RESTfulAPI/Migrations/`, but the application does not automatically apply migrations or bootstrap the database at startup. Applying migrations via `dotnet ef database update` requires the external EF Core CLI tool, targeting the project file (`--project PostItter_RESTfulAPI`), and an active, accessible database. Because the default connection string specifies local credentials and comma-based port notation, executing migrations without a configured local MySQL instance is not supported out of the box.
 
-## Contributing
+## Authentication & Known Implementation Notes
 
-Contributions are welcome! Feel free to fork the repository and submit pull requests. No specific contribution guidelines are established at this time.
+- **Custom Bearer Token**: The application uses a custom session token (`JwtWebToken`) composed of Base64Url-encoded fields (`sub`, `displayname`, `username`, `iat`, `exp`, `server_signature`) stored in the `activeUsers` table. It does not follow the standard RFC 7519 JSON Web Token specification.
+- **Temporary Authorization Bypass**: As documented in the frontend postmortem, authorization validation blocks in several controllers were temporarily bypassed during the prototype sprint due to CORS preflight and bearer header processing challenges.
+- **Password Hashing**: Passwords are hashed using unsalted SHA-256 in `Hasher.cs`.
+- **Storage Dependencies**: `BucketsController` and `FilesController` declare dependencies on `IAmazonS3`, but AWS service registration is not configured in `Program.cs`.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The original README declares this project under the MIT License. A standalone `LICENSE` file is not currently tracked in the repository.
